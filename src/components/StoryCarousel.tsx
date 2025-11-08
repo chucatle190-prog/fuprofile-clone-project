@@ -70,7 +70,7 @@ const StoryCarousel = ({ currentUserId }: StoryCarouselProps) => {
       .from('stories')
       .select(`
         *,
-        profiles:user_id (username, avatar_url, full_name)
+        profiles!user_id (username, avatar_url, full_name)
       `)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false });
