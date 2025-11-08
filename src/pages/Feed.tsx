@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import Navbar from "@/components/Navbar";
+import LeftSidebar from "@/components/LeftSidebar";
+import RightSidebar from "@/components/RightSidebar";
+import MobileNav from "@/components/MobileNav";
 import CreatePost from "@/components/CreatePost";
 import PostCard from "@/components/PostCard";
 import { useToast } from "@/hooks/use-toast";
@@ -104,24 +107,29 @@ const Feed = () => {
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Navbar user={user} />
-      <main className="container max-w-2xl mx-auto px-4 py-6">
-        <CreatePost onPostCreated={fetchPosts} />
-        <div className="space-y-4 mt-6">
-          {loading ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Đang tải...</p>
-            </div>
-          ) : posts.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Chưa có bài đăng nào</p>
-            </div>
-          ) : (
-            posts.map((post) => (
-              <PostCard key={post.id} post={post} currentUserId={user?.id} onUpdate={fetchPosts} />
-            ))
-          )}
-        </div>
-      </main>
+      <div className="flex">
+        <LeftSidebar />
+        <main className="flex-1 container max-w-2xl mx-auto px-4 py-6 mb-16 md:mb-0">
+          <CreatePost onPostCreated={fetchPosts} />
+          <div className="space-y-4 mt-6">
+            {loading ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Đang tải...</p>
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Chưa có bài đăng nào</p>
+              </div>
+            ) : (
+              posts.map((post) => (
+                <PostCard key={post.id} post={post} currentUserId={user?.id} onUpdate={fetchPosts} />
+              ))
+            )}
+          </div>
+        </main>
+        <RightSidebar />
+      </div>
+      <MobileNav />
     </div>
   );
 };
