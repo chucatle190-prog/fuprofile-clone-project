@@ -111,7 +111,7 @@ const Feed = () => {
       <div className="flex">
         <LeftSidebar />
         <main className="flex-1 container max-w-2xl mx-auto px-4 py-6 mb-16 md:mb-0">
-          <StoryCarousel />
+          <StoryCarousel currentUserId={user?.id} />
           <CreatePost onPostCreated={fetchPosts} />
           <div className="space-y-4 mt-6">
             {loading ? (

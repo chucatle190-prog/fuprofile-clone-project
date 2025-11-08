@@ -7,27 +7,35 @@ import LeftSidebar from "@/components/LeftSidebar";
 import RightSidebar from "@/components/RightSidebar";
 import MobileNav from "@/components/MobileNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserPlus, UserCheck, X } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { UserPlus, UserCheck, X, Users, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+interface Profile {
+  id: string;
+  username: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+}
 
 interface Friendship {
   id: string;
   user_id: string;
   friend_id: string;
   status: string;
-  profiles: {
-    id: string;
-    username: string;
-    full_name: string | null;
-  };
+  profiles: Profile;
 }
 
 const Friends = () => {
   const [user, setUser] = useState<User | null>(null);
   const [friendRequests, setFriendRequests] = useState<Friendship[]>([]);
   const [friends, setFriends] = useState<Friendship[]>([]);
+  const [suggestions, setSuggestions] = useState<Profile[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -58,7 +66,7 @@ const Friends = () => {
       .from("friendships")
       .select(`
         *,
-        profiles!friendships_user_id_fkey (id, username, full_name)
+        profiles!friendships_user_id_fkey (id, username, full_name, avatar_url, bio)
       `)
       .eq("friend_id", userId)
       .eq("status", "pending");
@@ -67,13 +75,67 @@ const Friends = () => {
       .from("friendships")
       .select(`
         *,
-        profiles!friendships_friend_id_fkey (id, username, full_name)
+        profiles!friendships_friend_id_fkey (id, username, full_name, avatar_url, bio)
       `)
       .eq("user_id", userId)
       .eq("status", "accepted");
 
     if (requests) setFriendRequests(requests as any);
     if (accepted) setFriends(accepted as any);
+
+    await fetchSuggestions(userId);
+  };
+
+  const fetchSuggestions = async (userId: string) => {
+    // Get current friends and pending requests
+    const { data: existingConnections } = await supabase
+      .from("friendships")
+      .select("friend_id, user_id")
+      .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
+
+    const connectedIds = new Set([userId]);
+    existingConnections?.forEach((conn) => {
+      connectedIds.add(conn.user_id);
+      connectedIds.add(conn.friend_id);
+    });
+
+    // Get users not connected
+    const { data: allUsers } = await supabase
+      .from("profiles")
+      .select("*")
+      .limit(10);
+
+    const filteredSuggestions = allUsers?.filter(
+      (profile) => !connectedIds.has(profile.id)
+    ) || [];
+
+    setSuggestions(filteredSuggestions.slice(0, 6));
+  };
+
+  const sendFriendRequest = async (friendId: string) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from("friendships")
+      .insert({
+        user_id: user.id,
+        friend_id: friendId,
+        status: "pending",
+      });
+
+    if (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể gửi lời mời kết bạn",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Thành công",
+        description: "Đã gửi lời mời kết bạn",
+      });
+      fetchFriendships(user.id);
+    }
   };
 
   const acceptFriendRequest = async (friendshipId: string) => {
@@ -104,94 +166,182 @@ const Friends = () => {
     fetchFriendships(user!.id);
   };
 
+  const filteredFriends = friends.filter((friend) =>
+    friend.profiles.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    friend.profiles.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Navbar user={user} />
       <div className="flex">
         <LeftSidebar />
-        <main className="flex-1 container max-w-2xl mx-auto px-4 py-6 mb-16 md:mb-0 space-y-6">
+        <main className="flex-1 container max-w-4xl mx-auto px-4 py-6 mb-16 md:mb-0">
           <Card className="shadow-medium">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5 text-primary" />
-                Lời mời kết bạn
+                <Users className="h-5 w-5 text-primary" />
+                Bạn bè
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {friendRequests.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">
-                  Không có lời mời kết bạn nào
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {friendRequests.map((request) => (
-                    <div
-                      key={request.id}
-                      className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarFallback className="bg-primary text-primary-foreground">
-                            {request.profiles.username[0].toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{request.profiles.full_name || request.profiles.username}</p>
-                          <p className="text-sm text-muted-foreground">@{request.profiles.username}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => acceptFriendRequest(request.id)}
-                        >
-                          <UserCheck className="h-4 w-4 mr-1" />
-                          Chấp nhận
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => rejectFriendRequest(request.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              <Tabs defaultValue="friends" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="friends">
+                    Tất cả bạn bè
+                    {friends.length > 0 && (
+                      <span className="ml-2 px-2 py-0.5 bg-primary/20 rounded-full text-xs">
+                        {friends.length}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="requests">
+                    Lời mời
+                    {friendRequests.length > 0 && (
+                      <span className="ml-2 px-2 py-0.5 bg-destructive/20 rounded-full text-xs">
+                        {friendRequests.length}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="suggestions">Gợi ý</TabsTrigger>
+                </TabsList>
 
-          <Card className="shadow-medium">
-            <CardHeader>
-              <CardTitle>Bạn bè ({friends.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {friends.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">
-                  Chưa có bạn bè nào
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {friends.map((friend) => (
-                    <div
-                      key={friend.id}
-                      className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg"
-                    >
-                      <Avatar>
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          {friend.profiles.username[0].toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{friend.profiles.full_name || friend.profiles.username}</p>
-                        <p className="text-sm text-muted-foreground">@{friend.profiles.username}</p>
-                      </div>
+                <TabsContent value="friends" className="space-y-4 mt-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Tìm kiếm bạn bè..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  {filteredFriends.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      {searchQuery ? "Không tìm thấy bạn bè nào" : "Chưa có bạn bè nào"}
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {filteredFriends.map((friend) => (
+                        <Card key={friend.id} className="p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-start gap-3">
+                            <Avatar className="h-16 w-16">
+                              <AvatarImage src={friend.profiles.avatar_url || ""} />
+                              <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+                                {friend.profiles.username[0].toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold truncate">
+                                {friend.profiles.full_name || friend.profiles.username}
+                              </p>
+                              <p className="text-sm text-muted-foreground truncate">
+                                @{friend.profiles.username}
+                              </p>
+                              {friend.profiles.bio && (
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                  {friend.profiles.bio}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
+                  )}
+                </TabsContent>
+
+                <TabsContent value="requests" className="space-y-3 mt-4">
+                  {friendRequests.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      Không có lời mời kết bạn nào
+                    </p>
+                  ) : (
+                    friendRequests.map((request) => (
+                      <Card key={request.id} className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-14 w-14">
+                              <AvatarImage src={request.profiles.avatar_url || ""} />
+                              <AvatarFallback className="bg-primary text-primary-foreground">
+                                {request.profiles.username[0].toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-semibold">
+                                {request.profiles.full_name || request.profiles.username}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                @{request.profiles.username}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => acceptFriendRequest(request.id)}
+                            >
+                              <UserCheck className="h-4 w-4 mr-1" />
+                              Chấp nhận
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => rejectFriendRequest(request.id)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </TabsContent>
+
+                <TabsContent value="suggestions" className="space-y-3 mt-4">
+                  {suggestions.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      Không có gợi ý nào
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {suggestions.map((suggestion) => (
+                        <Card key={suggestion.id} className="p-4 hover:shadow-md transition-shadow">
+                          <div className="flex flex-col items-center text-center gap-3">
+                            <Avatar className="h-20 w-20">
+                              <AvatarImage src={suggestion.avatar_url || ""} />
+                              <AvatarFallback className="bg-primary text-primary-foreground text-xl">
+                                {suggestion.username[0].toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="w-full">
+                              <p className="font-semibold truncate">
+                                {suggestion.full_name || suggestion.username}
+                              </p>
+                              <p className="text-sm text-muted-foreground truncate">
+                                @{suggestion.username}
+                              </p>
+                              {suggestion.bio && (
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                  {suggestion.bio}
+                                </p>
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={() => sendFriendRequest(suggestion.id)}
+                            >
+                              <UserPlus className="h-4 w-4 mr-1" />
+                              Thêm bạn bè
+                            </Button>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </main>
