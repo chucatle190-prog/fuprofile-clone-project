@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { X, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { X, ChevronLeft, ChevronRight, Trash2, Music, Volume2, VolumeX } from "lucide-react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,9 @@ interface Story {
   user_id: string;
   image_url: string;
   created_at: string;
+  music_name?: string | null;
+  music_artist?: string | null;
+  music_url?: string | null;
   profiles: {
     username: string;
     avatar_url: string | null;
@@ -28,10 +31,21 @@ interface StoryViewerProps {
 const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDelete }: StoryViewerProps) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
   const currentStory = stories[currentIndex];
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setProgress(0);
+    
+    // Play music if available
+    if (currentStory?.music_url && audioRef.current) {
+      audioRef.current.src = currentStory.music_url;
+      audioRef.current.loop = true;
+      audioRef.current.volume = isMuted ? 0 : 0.5;
+      audioRef.current.play().catch(err => console.log("Audio play failed:", err));
+    }
+    
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
@@ -42,8 +56,20 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
       });
     }, 100);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    };
   }, [currentIndex]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : 0.5;
+    }
+  }, [isMuted]);
 
   const handleNext = () => {
     if (currentIndex < stories.length - 1) {
@@ -125,6 +151,16 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
           </div>
         </div>
         <div className="flex gap-2">
+          {currentStory.music_url && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/20"
+              onClick={() => setIsMuted(!isMuted)}
+            >
+              {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+            </Button>
+          )}
           {currentStory.user_id === currentUserId && (
             <Button
               variant="ghost"
@@ -145,6 +181,21 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
           </Button>
         </div>
       </div>
+
+      {/* Music info */}
+      {currentStory.music_name && (
+        <div className="absolute bottom-20 left-4 right-4 z-10">
+          <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3 flex items-center gap-3">
+            <div className="w-10 h-10 rounded bg-white/20 flex items-center justify-center">
+              <Music className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-semibold text-sm truncate">{currentStory.music_name}</p>
+              <p className="text-white/80 text-xs truncate">{currentStory.music_artist}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Navigation buttons */}
       {currentIndex > 0 && (
@@ -183,6 +234,9 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
           }
         }}
       />
+
+      {/* Hidden audio element */}
+      <audio ref={audioRef} className="hidden" />
     </div>
   );
 };

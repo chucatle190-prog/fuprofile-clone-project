@@ -449,6 +449,9 @@ export type Database = {
           expires_at: string
           id: string
           image_url: string
+          music_artist: string | null
+          music_name: string | null
+          music_url: string | null
           user_id: string
         }
         Insert: {
@@ -456,6 +459,9 @@ export type Database = {
           expires_at?: string
           id?: string
           image_url: string
+          music_artist?: string | null
+          music_name?: string | null
+          music_url?: string | null
           user_id: string
         }
         Update: {
@@ -463,6 +469,9 @@ export type Database = {
           expires_at?: string
           id?: string
           image_url?: string
+          music_artist?: string | null
+          music_name?: string | null
+          music_url?: string | null
           user_id?: string
         }
         Relationships: []

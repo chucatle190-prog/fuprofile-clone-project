@@ -11,6 +11,9 @@ interface Story {
   user_id: string;
   image_url: string;
   created_at: string;
+  music_name?: string | null;
+  music_artist?: string | null;
+  music_url?: string | null;
   profiles: {
     username: string;
     avatar_url: string | null;
