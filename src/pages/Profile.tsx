@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -11,9 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Camera, MessageCircle, Heart, Users, Coins } from "lucide-react";
+import { Loader2, Camera, MessageCircle, Heart, Users, Coins, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PostCard from "@/components/PostCard";
 
@@ -58,8 +58,11 @@ const Profile = () => {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [fullName, setFullName] = useState("");
   const [bio, setBio] = useState("");
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -144,6 +147,140 @@ const Profile = () => {
     });
   };
 
+  const uploadImage = async (file: File, bucket: string, userId: string) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}/${Math.random()}.${fileExt}`;
+
+    // Delete old file if exists
+    const { data: existingFiles } = await supabase.storage
+      .from(bucket)
+      .list(userId);
+
+    if (existingFiles && existingFiles.length > 0) {
+      await supabase.storage
+        .from(bucket)
+        .remove(existingFiles.map(f => `${userId}/${f.name}`));
+    }
+
+    // Upload new file
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(fileName, file);
+
+    if (uploadError) throw uploadError;
+
+    // Get public URL
+    const { data } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !user) return;
+
+    const file = e.target.files[0];
+    
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng chọn file ảnh",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Lỗi",
+        description: "Kích thước ảnh không được vượt quá 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const avatarUrl = await uploadImage(file, 'avatars', user.id);
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ avatar_url: avatarUrl })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật ảnh đại diện",
+      });
+      
+      fetchProfile(user.id);
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải ảnh lên",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !user) return;
+
+    const file = e.target.files[0];
+    
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng chọn file ảnh",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Lỗi",
+        description: "Kích thước ảnh không được vượt quá 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const coverUrl = await uploadImage(file, 'covers', user.id);
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ cover_url: coverUrl })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật ảnh bìa",
+      });
+      
+      fetchProfile(user.id);
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải ảnh lên",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -196,17 +333,26 @@ const Profile = () => {
         <main className="flex-1 container max-w-4xl mx-auto mb-16 md:mb-0">
           {/* Cover & Profile Picture */}
           <div className="relative">
-            <div className="h-80 bg-gradient-to-r from-primary/30 to-accent/30 rounded-b-xl relative">
+            <div className="h-80 bg-gradient-to-r from-primary/30 to-accent/30 rounded-b-xl relative overflow-hidden">
               {profile?.cover_url && (
-                <img src={profile.cover_url} alt="Cover" className="w-full h-full object-cover rounded-b-xl" />
+                <img src={profile.cover_url} alt="Cover" className="w-full h-full object-cover" />
               )}
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleCoverUpload}
+              />
               <Button
                 size="sm"
                 variant="secondary"
                 className="absolute bottom-4 right-4"
+                onClick={() => coverInputRef.current?.click()}
+                disabled={uploading}
               >
-                <Camera className="h-4 w-4 mr-2" />
-                Chỉnh sửa ảnh bìa
+                <Upload className="h-4 w-4 mr-2" />
+                {uploading ? "Đang tải..." : "Chỉnh sửa ảnh bìa"}
               </Button>
             </div>
             
@@ -215,14 +361,24 @@ const Profile = () => {
                 <div className="flex flex-col md:flex-row items-center md:items-end gap-4">
                   <div className="relative">
                     <Avatar className="h-32 w-32 border-4 border-card">
+                      <AvatarImage src={profile?.avatar_url || ""} />
                       <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
                         {profile?.username[0].toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarUpload}
+                    />
                     <Button
                       size="icon"
                       variant="secondary"
                       className="absolute bottom-0 right-0 rounded-full h-10 w-10"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={uploading}
                     >
                       <Camera className="h-4 w-4" />
                     </Button>

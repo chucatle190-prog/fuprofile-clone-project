@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -14,7 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Settings as SettingsIcon, User as UserIcon, Bell, Lock, Palette, LogOut, AlertTriangle } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Settings as SettingsIcon, User as UserIcon, Bell, Lock, Palette, LogOut, AlertTriangle, Upload } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -39,6 +40,8 @@ const Settings = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   // Profile form state
@@ -94,6 +97,68 @@ const Settings = () => {
       setFullName(data.full_name || "");
       setUsername(data.username || "");
       setBio(data.bio || "");
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !user) return;
+
+    const file = e.target.files[0];
+    
+    if (!file.type.startsWith('image/')) {
+      toast.error("Vui lòng chọn file ảnh");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Kích thước ảnh không được vượt quá 5MB");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Math.random()}.${fileExt}`;
+
+      // Delete old files
+      const { data: existingFiles } = await supabase.storage
+        .from('avatars')
+        .list(user.id);
+
+      if (existingFiles && existingFiles.length > 0) {
+        await supabase.storage
+          .from('avatars')
+          .remove(existingFiles.map(f => `${user.id}/${f.name}`));
+      }
+
+      // Upload new file
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update profile
+      const { error } = await supabase
+        .from("profiles")
+        .update({ avatar_url: data.publicUrl })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      toast.success("Đã cập nhật ảnh đại diện");
+      fetchProfile(user.id);
+    } catch (error) {
+      console.error(error);
+      toast.error("Không thể tải ảnh lên");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -204,6 +269,36 @@ const Settings = () => {
                 {/* Profile Tab */}
                 <TabsContent value="profile" className="space-y-4">
                   <div className="space-y-4">
+                    {/* Avatar Upload */}
+                    <div className="flex items-center gap-4 pb-4 border-b">
+                      <Avatar className="h-20 w-20">
+                        <AvatarImage src={profile?.avatar_url || ""} />
+                        <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                          {profile?.username?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-medium mb-1">Ảnh đại diện</p>
+                        <p className="text-sm text-muted-foreground mb-2">PNG, JPG, JPEG tối đa 5MB</p>
+                        <input
+                          ref={avatarInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleAvatarUpload}
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => avatarInputRef.current?.click()}
+                          disabled={uploading}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          {uploading ? "Đang tải..." : "Tải ảnh lên"}
+                        </Button>
+                      </div>
+                    </div>
+                    
                     <div>
                       <Label htmlFor="fullname">Họ và tên</Label>
                       <Input
