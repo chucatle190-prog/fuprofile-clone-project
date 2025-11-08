@@ -8,6 +8,7 @@ import RightSidebar from "@/components/RightSidebar";
 import MobileNav from "@/components/MobileNav";
 import CreatePost from "@/components/CreatePost";
 import PostCard from "@/components/PostCard";
+import StoryCarousel from "@/components/StoryCarousel";
 import { useToast } from "@/hooks/use-toast";
 
 interface Profile {
@@ -110,6 +111,7 @@ const Feed = () => {
       <div className="flex">
         <LeftSidebar />
         <main className="flex-1 container max-w-2xl mx-auto px-4 py-6 mb-16 md:mb-0">
+          <StoryCarousel />
           <CreatePost onPostCreated={fetchPosts} />
           <div className="space-y-4 mt-6">
             {loading ? (

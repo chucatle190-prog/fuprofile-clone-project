@@ -1,12 +1,17 @@
-import { User } from "@supabase/supabase-js";
+import { Home, LogOut, User, Bell, MessageCircle, Search, Users, Menu } from "lucide-react";
+import { NavLink } from "./NavLink";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Home, User as UserIcon } from "lucide-react";
+import { User as UserType } from "@supabase/supabase-js";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 
 interface NavbarProps {
-  user: User | null;
+  user: UserType | null;
 }
 
 const Navbar = ({ user }: NavbarProps) => {
@@ -23,38 +28,105 @@ const Navbar = ({ user }: NavbarProps) => {
   };
 
   return (
-    <nav className="bg-card border-b border-border shadow-soft sticky top-0 z-50">
-      <div className="container max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-8">
-            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent cursor-pointer" onClick={() => navigate("/feed")}>
-              F.U.Profile
-            </h1>
-            <div className="hidden md:flex space-x-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate("/feed")}>
-                <Home className="h-5 w-5 mr-2" />
-                Trang chủ
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/profile")}>
-                <UserIcon className="h-5 w-5 mr-2" />
-                Trang cá nhân
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            {user && (
-              <>
-                <span className="text-sm text-muted-foreground hidden md:inline">
-                  {user.email}
-                </span>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Đăng xuất
-                </Button>
-              </>
-            )}
+    <nav className="bg-card border-b border-border sticky top-0 z-50 shadow-medium">
+      <div className="container mx-auto px-4 h-14 flex items-center justify-between gap-4">
+        {/* Logo */}
+        <NavLink to="/feed" className="text-xl font-bold text-primary flex-shrink-0">
+          F.U.Profile
+        </NavLink>
+
+        {/* Search Bar - Desktop */}
+        <div className="hidden md:flex flex-1 max-w-md">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Tìm kiếm trên F.U.Profile"
+              className="w-full pl-10 bg-secondary/50 border-0"
+            />
           </div>
         </div>
+
+        {/* Center Navigation - Desktop */}
+        <div className="hidden lg:flex items-center gap-1 flex-1 justify-center max-w-2xl">
+          <NavLink
+            to="/feed"
+            className="flex items-center justify-center px-8 py-2 rounded-lg hover:bg-accent/50 transition-colors relative"
+            activeClassName="text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-1 after:bg-primary after:rounded-t"
+          >
+            <Home className="h-6 w-6" />
+          </NavLink>
+
+          <NavLink
+            to="/friends"
+            className="flex items-center justify-center px-8 py-2 rounded-lg hover:bg-accent/50 transition-colors relative"
+            activeClassName="text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-1 after:bg-primary after:rounded-t"
+          >
+            <Users className="h-6 w-6" />
+          </NavLink>
+
+          <NavLink
+            to="/groups"
+            className="flex items-center justify-center px-8 py-2 rounded-lg hover:bg-accent/50 transition-colors relative"
+            activeClassName="text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-1 after:bg-primary after:rounded-t"
+          >
+            <Menu className="h-6 w-6" />
+          </NavLink>
+        </div>
+
+        {/* Right Icons - Desktop */}
+        <div className="hidden md:flex items-center gap-2">
+          <NavLink
+            to="/messages"
+            className="relative p-2 rounded-full hover:bg-accent/50 transition-colors"
+          >
+            <MessageCircle className="h-5 w-5" />
+            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+              3
+            </Badge>
+          </NavLink>
+
+          <NavLink
+            to="/notifications"
+            className="relative p-2 rounded-full hover:bg-accent/50 transition-colors"
+          >
+            <Bell className="h-5 w-5" />
+            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+              5
+            </Badge>
+          </NavLink>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {user?.email?.[0].toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => navigate("/profile")}>
+                <User className="mr-2 h-4 w-4" />
+                Trang cá nhân
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
+                <Menu className="mr-2 h-4 w-4" />
+                Cài đặt
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Đăng xuất
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Mobile - Search Icon */}
+        <Button variant="ghost" size="icon" className="md:hidden">
+          <Search className="h-5 w-5" />
+        </Button>
       </div>
     </nav>
   );

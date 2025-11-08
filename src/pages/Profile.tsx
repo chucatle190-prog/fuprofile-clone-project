@@ -13,7 +13,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Camera, MessageCircle, Heart, Users, Coins } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PostCard from "@/components/PostCard";
 
 interface Profile {
   id: string;
@@ -21,11 +23,39 @@ interface Profile {
   full_name: string | null;
   bio: string | null;
   avatar_url: string | null;
+  cover_url: string | null;
+}
+
+interface Post {
+  id: string;
+  content: string;
+  image_url: string | null;
+  created_at: string;
+  user_id: string;
+  profiles: Profile;
+}
+
+interface Stats {
+  posts: number;
+  comments: number;
+  reactions: number;
+  friends: number;
+  totalReward: number;
+  totalUSD: number;
 }
 
 const Profile = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [stats, setStats] = useState<Stats>({
+    posts: 0,
+    comments: 0,
+    reactions: 0,
+    friends: 0,
+    totalReward: 0,
+    totalUSD: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -68,6 +98,9 @@ const Profile = () => {
       setProfile(data);
       setFullName(data.full_name || "");
       setBio(data.bio || "");
+
+      await fetchUserPosts(userId);
+      await fetchStats(userId);
     } catch (error: any) {
       toast({
         title: "Lỗi",
@@ -77,6 +110,38 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchUserPosts = async (userId: string) => {
+    const { data } = await supabase
+      .from("posts")
+      .select(`
+        *,
+        profiles:user_id (*)
+      `)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (data) setPosts(data as any);
+  };
+
+  const fetchStats = async (userId: string) => {
+    const [postsCount, commentsCount, reactionsCount, friendsCount, wallet] = await Promise.all([
+      supabase.from("posts").select("*", { count: "exact", head: true }).eq("user_id", userId),
+      supabase.from("comments").select("*", { count: "exact", head: true }).eq("user_id", userId),
+      supabase.from("reactions").select("*", { count: "exact", head: true }).eq("user_id", userId),
+      supabase.from("friendships").select("*", { count: "exact", head: true }).eq("user_id", userId).eq("status", "accepted"),
+      supabase.from("user_wallets").select("total_reward_camly, total_usd").eq("user_id", userId).maybeSingle(),
+    ]);
+
+    setStats({
+      posts: postsCount.count || 0,
+      comments: commentsCount.count || 0,
+      reactions: reactionsCount.count || 0,
+      friends: friendsCount.count || 0,
+      totalReward: wallet.data?.total_reward_camly || 0,
+      totalUSD: wallet.data?.total_usd || 0,
+    });
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -128,47 +193,159 @@ const Profile = () => {
       <Navbar user={user} />
       <div className="flex">
         <LeftSidebar />
-        <main className="flex-1 container max-w-2xl mx-auto px-4 py-6 mb-16 md:mb-0">
-          <Card className="shadow-medium">
-            <CardHeader>
-              <CardTitle>Thông tin cá nhân</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center mb-6">
-                <Avatar className="h-24 w-24 mb-4">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-3xl">
-                    {profile?.username[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <p className="text-xl font-semibold">@{profile?.username}</p>
+        <main className="flex-1 container max-w-4xl mx-auto mb-16 md:mb-0">
+          {/* Cover & Profile Picture */}
+          <div className="relative">
+            <div className="h-80 bg-gradient-to-r from-primary/30 to-accent/30 rounded-b-xl relative">
+              {profile?.cover_url && (
+                <img src={profile.cover_url} alt="Cover" className="w-full h-full object-cover rounded-b-xl" />
+              )}
+              <Button
+                size="sm"
+                variant="secondary"
+                className="absolute bottom-4 right-4"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                Chỉnh sửa ảnh bìa
+              </Button>
+            </div>
+            
+            <div className="px-6 -mt-16 relative">
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div className="flex flex-col md:flex-row items-center md:items-end gap-4">
+                  <div className="relative">
+                    <Avatar className="h-32 w-32 border-4 border-card">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
+                        {profile?.username[0].toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="absolute bottom-0 right-0 rounded-full h-10 w-10"
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="text-center md:text-left mb-4">
+                    <h1 className="text-3xl font-bold">{profile?.full_name || profile?.username}</h1>
+                    <p className="text-muted-foreground">@{profile?.username}</p>
+                    {profile?.bio && <p className="mt-2 max-w-md">{profile.bio}</p>}
+                  </div>
+                </div>
               </div>
-              <form onSubmit={handleSave} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Họ và tên</Label>
-                  <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Nhập họ và tên"
-                  />
+            </div>
+          </div>
+
+          {/* Honor Bar */}
+          <Card className="mx-6 mt-4 shadow-soft">
+            <CardContent className="p-4">
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-4 text-center">
+                <div>
+                  <div className="flex items-center justify-center gap-1 text-primary mb-1">
+                    <MessageCircle className="h-4 w-4" />
+                    <span className="text-2xl font-bold">{stats.posts}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Bài viết</p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Giới thiệu</Label>
-                  <Textarea
-                    id="bio"
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    placeholder="Viết vài dòng về bản thân..."
-                    className="min-h-[100px]"
-                  />
+                <div>
+                  <div className="flex items-center justify-center gap-1 text-primary mb-1">
+                    <MessageCircle className="h-4 w-4" />
+                    <span className="text-2xl font-bold">{stats.comments}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Bình luận</p>
                 </div>
-                <Button type="submit" className="w-full" disabled={saving}>
-                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Lưu thay đổi
-                </Button>
-              </form>
+                <div>
+                  <div className="flex items-center justify-center gap-1 text-primary mb-1">
+                    <Heart className="h-4 w-4" />
+                    <span className="text-2xl font-bold">{stats.reactions}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Reactions</p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-center gap-1 text-primary mb-1">
+                    <Users className="h-4 w-4" />
+                    <span className="text-2xl font-bold">{stats.friends}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Bạn bè</p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-center gap-1 text-accent mb-1">
+                    <Coins className="h-4 w-4" />
+                    <span className="text-2xl font-bold">{stats.totalReward}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Camly Coin</p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-center gap-1 text-accent mb-1">
+                    <span className="text-2xl font-bold">${stats.totalUSD}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Total USD</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
+
+          {/* Tabs */}
+          <div className="px-6 mt-6">
+            <Tabs defaultValue="posts" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="posts">Bài viết</TabsTrigger>
+                <TabsTrigger value="about">Giới thiệu</TabsTrigger>
+                <TabsTrigger value="friends">Bạn bè</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="posts" className="space-y-4 mt-4">
+                {posts.length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <p className="text-muted-foreground">Chưa có bài viết nào</p>
+                  </Card>
+                ) : (
+                  posts.map((post) => (
+                    <PostCard key={post.id} post={post} currentUserId={user?.id} onUpdate={() => fetchUserPosts(user!.id)} />
+                  ))
+                )}
+              </TabsContent>
+              
+              <TabsContent value="about">
+                <Card>
+                  <CardContent className="p-6">
+                    <form onSubmit={handleSave} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="fullName">Họ và tên</Label>
+                        <Input
+                          id="fullName"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          placeholder="Nhập họ và tên"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="bio">Giới thiệu</Label>
+                        <Textarea
+                          id="bio"
+                          value={bio}
+                          onChange={(e) => setBio(e.target.value)}
+                          placeholder="Viết vài dòng về bản thân..."
+                          className="min-h-[100px]"
+                        />
+                      </div>
+                      <Button type="submit" disabled={saving}>
+                        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Lưu thay đổi
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="friends">
+                <Card className="p-8 text-center">
+                  <p className="text-muted-foreground">Danh sách bạn bè sẽ hiển thị ở đây</p>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
         </main>
         <RightSidebar />
       </div>
