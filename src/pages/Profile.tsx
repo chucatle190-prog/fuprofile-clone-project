@@ -6,16 +6,16 @@ import Navbar from "@/components/Navbar";
 import LeftSidebar from "@/components/LeftSidebar";
 import RightSidebar from "@/components/RightSidebar";
 import MobileNav from "@/components/MobileNav";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Camera, MessageCircle, Heart, Users, Coins, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PostCard from "@/components/PostCard";
+import PhotosGrid from "@/components/profile/PhotosGrid";
+import FriendsList from "@/components/profile/FriendsList";
+import AboutSection from "@/components/profile/AboutSection";
 
 interface Profile {
   id: string;
@@ -24,6 +24,11 @@ interface Profile {
   bio: string | null;
   avatar_url: string | null;
   cover_url: string | null;
+  work: string | null;
+  education: string | null;
+  lives_in: string | null;
+  from_location: string | null;
+  relationship: string | null;
 }
 
 interface Post {
@@ -57,10 +62,7 @@ const Profile = () => {
     totalUSD: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [fullName, setFullName] = useState("");
-  const [bio, setBio] = useState("");
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -99,8 +101,6 @@ const Profile = () => {
       if (error) throw error;
       
       setProfile(data);
-      setFullName(data.full_name || "");
-      setBio(data.bio || "");
 
       await fetchUserPosts(userId);
       await fetchStats(userId);
@@ -281,38 +281,6 @@ const Profile = () => {
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          full_name: fullName,
-          bio: bio,
-        })
-        .eq("id", user.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật thông tin cá nhân",
-      });
-      
-      fetchProfile(user.id);
-    } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -445,9 +413,10 @@ const Profile = () => {
           {/* Tabs */}
           <div className="px-6 mt-6">
             <Tabs defaultValue="posts" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="posts">Bài viết</TabsTrigger>
                 <TabsTrigger value="about">Giới thiệu</TabsTrigger>
+                <TabsTrigger value="photos">Ảnh</TabsTrigger>
                 <TabsTrigger value="friends">Bạn bè</TabsTrigger>
               </TabsList>
               
@@ -463,42 +432,22 @@ const Profile = () => {
                 )}
               </TabsContent>
               
-              <TabsContent value="about">
-                <Card>
-                  <CardContent className="p-6">
-                    <form onSubmit={handleSave} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="fullName">Họ và tên</Label>
-                        <Input
-                          id="fullName"
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          placeholder="Nhập họ và tên"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="bio">Giới thiệu</Label>
-                        <Textarea
-                          id="bio"
-                          value={bio}
-                          onChange={(e) => setBio(e.target.value)}
-                          placeholder="Viết vài dòng về bản thân..."
-                          className="min-h-[100px]"
-                        />
-                      </div>
-                      <Button type="submit" disabled={saving}>
-                        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Lưu thay đổi
-                      </Button>
-                    </form>
-                  </CardContent>
-                </Card>
+              <TabsContent value="about" className="mt-4">
+                {profile && (
+                  <AboutSection 
+                    profile={profile} 
+                    isOwnProfile={true}
+                    onUpdate={() => fetchProfile(user!.id)}
+                  />
+                )}
               </TabsContent>
               
-              <TabsContent value="friends">
-                <Card className="p-8 text-center">
-                  <p className="text-muted-foreground">Danh sách bạn bè sẽ hiển thị ở đây</p>
-                </Card>
+              <TabsContent value="photos" className="mt-4">
+                {user && <PhotosGrid userId={user.id} />}
+              </TabsContent>
+              
+              <TabsContent value="friends" className="mt-4">
+                {user && <FriendsList userId={user.id} />}
               </TabsContent>
             </Tabs>
           </div>

@@ -352,30 +352,45 @@ export type Database = {
           bio: string | null
           cover_url: string | null
           created_at: string | null
+          education: string | null
+          from_location: string | null
           full_name: string | null
           id: string
+          lives_in: string | null
+          relationship: string | null
           updated_at: string | null
           username: string
+          work: string | null
         }
         Insert: {
           avatar_url?: string | null
           bio?: string | null
           cover_url?: string | null
           created_at?: string | null
+          education?: string | null
+          from_location?: string | null
           full_name?: string | null
           id: string
+          lives_in?: string | null
+          relationship?: string | null
           updated_at?: string | null
           username: string
+          work?: string | null
         }
         Update: {
           avatar_url?: string | null
           bio?: string | null
           cover_url?: string | null
           created_at?: string | null
+          education?: string | null
+          from_location?: string | null
           full_name?: string | null
           id?: string
+          lives_in?: string | null
+          relationship?: string | null
           updated_at?: string | null
           username?: string
+          work?: string | null
         }
         Relationships: []
       }
