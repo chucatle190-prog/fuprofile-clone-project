@@ -115,32 +115,40 @@ const StoryCarousel = ({ currentUserId }: StoryCarouselProps) => {
           {/* Your Story / Create Story */}
           <div className="flex-shrink-0">
             {myStories ? (
-              <button
-                onClick={() => handleStoryClick(myStories)}
-                className="relative w-28 h-44 rounded-lg overflow-hidden group"
-              >
-                <img
-                  src={myStories.stories[0].image_url}
-                  alt="Your story"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60"></div>
-                <div className="absolute top-2 left-2">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary via-accent to-primary p-0.5">
-                    <Avatar className="w-full h-full border-2 border-card">
-                      <AvatarImage src={myStories.avatar_url || ""} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                        {myStories.username[0].toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+              <div className="relative">
+                <button
+                  onClick={() => handleStoryClick(myStories)}
+                  className="relative w-28 h-44 rounded-lg overflow-hidden group"
+                >
+                  <img
+                    src={myStories.stories[0].image_url}
+                    alt="Your story"
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60"></div>
+                  <div className="absolute top-2 left-2">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary via-accent to-primary p-0.5">
+                      <Avatar className="w-full h-full border-2 border-card">
+                        <AvatarImage src={myStories.avatar_url || ""} />
+                        <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                          {myStories.username[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
                   </div>
-                </div>
-                <div className="absolute bottom-2 left-2 right-2">
-                  <p className="text-xs font-medium text-white drop-shadow-lg truncate">
-                    Tin của bạn
-                  </p>
-                </div>
-              </button>
+                  <div className="absolute bottom-2 left-2 right-2">
+                    <p className="text-xs font-medium text-white drop-shadow-lg truncate">
+                      Tin của bạn
+                    </p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setShowCreateDialog(true)}
+                  className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-primary flex items-center justify-center border-2 border-card shadow-lg hover:scale-110 transition-transform z-10"
+                >
+                  <Plus className="h-4 w-4 text-primary-foreground" />
+                </button>
+              </div>
             ) : (
               <button
                 onClick={() => setShowCreateDialog(true)}
