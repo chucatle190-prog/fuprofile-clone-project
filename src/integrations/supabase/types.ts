@@ -53,6 +53,59 @@ export type Database = {
           },
         ]
       }
+      conversation_participants: {
+        Row: {
+          conversation_id: string
+          id: string
+          joined_at: string | null
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          joined_at?: string | null
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          joined_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       friendships: {
         Row: {
           created_at: string | null
@@ -92,6 +145,68 @@ export type Database = {
           },
         ]
       }
+      group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string | null
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string | null
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string | null
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          cover_url: string | null
+          created_at: string | null
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       likes: {
         Row: {
           created_at: string | null
@@ -128,6 +243,71 @@ export type Database = {
           },
         ]
       }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          related_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          related_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          related_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           content: string
@@ -136,6 +316,7 @@ export type Database = {
           image_url: string | null
           updated_at: string | null
           user_id: string
+          video_url: string | null
         }
         Insert: {
           content: string
@@ -144,6 +325,7 @@ export type Database = {
           image_url?: string | null
           updated_at?: string | null
           user_id: string
+          video_url?: string | null
         }
         Update: {
           content?: string
@@ -152,6 +334,7 @@ export type Database = {
           image_url?: string | null
           updated_at?: string | null
           user_id?: string
+          video_url?: string | null
         }
         Relationships: [
           {
@@ -167,6 +350,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bio: string | null
+          cover_url: string | null
           created_at: string | null
           full_name: string | null
           id: string
@@ -176,6 +360,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bio?: string | null
+          cover_url?: string | null
           created_at?: string | null
           full_name?: string | null
           id: string
@@ -185,11 +370,118 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bio?: string | null
+          cover_url?: string | null
           created_at?: string | null
           full_name?: string | null
           id?: string
           updated_at?: string | null
           username?: string
+        }
+        Relationships: []
+      }
+      reactions: {
+        Row: {
+          created_at: string | null
+          id: string
+          post_id: string
+          reaction_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          post_id: string
+          reaction_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          post_id?: string
+          reaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reactions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shares: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shares_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_wallets: {
+        Row: {
+          bnb_balance: number | null
+          btc_balance: number | null
+          camly_balance: number | null
+          created_at: string | null
+          id: string
+          total_reward_camly: number | null
+          total_usd: number | null
+          updated_at: string | null
+          usdt_balance: number | null
+          user_id: string
+          wallet_address: string | null
+        }
+        Insert: {
+          bnb_balance?: number | null
+          btc_balance?: number | null
+          camly_balance?: number | null
+          created_at?: string | null
+          id?: string
+          total_reward_camly?: number | null
+          total_usd?: number | null
+          updated_at?: string | null
+          usdt_balance?: number | null
+          user_id: string
+          wallet_address?: string | null
+        }
+        Update: {
+          bnb_balance?: number | null
+          btc_balance?: number | null
+          camly_balance?: number | null
+          created_at?: string | null
+          id?: string
+          total_reward_camly?: number | null
+          total_usd?: number | null
+          updated_at?: string | null
+          usdt_balance?: number | null
+          user_id?: string
+          wallet_address?: string | null
         }
         Relationships: []
       }
