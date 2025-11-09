@@ -226,6 +226,14 @@ const Wallet = () => {
                     </Button>
                   </div>
 
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => navigate("/transactions")}
+                  >
+                    Xem lịch sử giao dịch
+                  </Button>
+
                   <div className="text-xs text-muted-foreground bg-secondary/30 p-3 rounded">
                     <p className="font-medium mb-1">CAMLY Token Address:</p>
                     <code className="break-all">{CAMLY_TOKEN_ADDRESS}</code>
