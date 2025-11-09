@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import Navbar from "@/components/Navbar";
 import LeftSidebar from "@/components/LeftSidebar";
 import MobileNav from "@/components/MobileNav";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import ConversationList from "@/components/ConversationList";
 import ChatWindow from "@/components/ChatWindow";
 
@@ -31,6 +33,7 @@ const Messages = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -116,6 +119,12 @@ const Messages = () => {
     );
 
     setConversations(conversationsWithDetails);
+    
+    // Auto-select conversation if passed from navigation
+    const passedConversationId = location.state?.conversationId;
+    if (passedConversationId && conversationsWithDetails.some(c => c.id === passedConversationId)) {
+      setSelectedConversationId(passedConversationId);
+    }
   };
 
   const selectedConversation = conversations.find((c) => c.id === selectedConversationId);
@@ -127,7 +136,8 @@ const Messages = () => {
         <LeftSidebar />
         <main className="flex-1 container max-w-6xl mx-auto px-4 py-6 mb-16 md:mb-0">
           <Card className="shadow-medium h-[calc(100vh-140px)] flex overflow-hidden">
-            <div className="w-full md:w-80 border-r border-border">
+            {/* Mobile: Show either list or chat */}
+            <div className={`${selectedConversationId ? 'hidden md:block' : 'block'} w-full md:w-80 border-r border-border`}>
               <ConversationList
                 conversations={conversations}
                 selectedId={selectedConversationId}
@@ -136,6 +146,29 @@ const Messages = () => {
               />
             </div>
             
+            {/* Mobile chat view */}
+            {selectedConversationId && selectedConversation && user && (
+              <div className="flex-1 flex md:hidden flex-col">
+                <div className="p-4 border-b border-border">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedConversationId(null)}
+                    className="gap-2"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Quay lại
+                  </Button>
+                </div>
+                <ChatWindow
+                  conversationId={selectedConversationId}
+                  currentUserId={user.id}
+                  otherUser={selectedConversation.other_user || null}
+                />
+              </div>
+            )}
+            
+            {/* Desktop chat view */}
             <div className="flex-1 hidden md:flex flex-col">
               {selectedConversationId && selectedConversation && user ? (
                 <ChatWindow

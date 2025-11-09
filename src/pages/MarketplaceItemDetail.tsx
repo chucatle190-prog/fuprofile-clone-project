@@ -164,7 +164,7 @@ const MarketplaceItemDetail = () => {
         if (participantsError) throw participantsError;
       }
 
-      navigate("/messages");
+      navigate("/messages", { state: { conversationId } });
       
       toast({
         title: "Thành công",
