@@ -1,4 +1,4 @@
-import { Home, Users, UserPlus, Settings, Wallet } from "lucide-react";
+import { Home, Users, UserPlus, Settings, Wallet, ShoppingBag } from "lucide-react";
 import { NavLink } from "./NavLink";
 
 const LeftSidebar = () => {
@@ -30,6 +30,15 @@ const LeftSidebar = () => {
         >
           <Users className="h-5 w-5" />
           <span className="font-medium">Nhóm</span>
+        </NavLink>
+        
+        <NavLink
+          to="/marketplace"
+          className="flex items-center gap-3 px-4 py-3 rounded-lg text-foreground hover:bg-accent/50 transition-colors"
+          activeClassName="bg-accent text-accent-foreground"
+        >
+          <ShoppingBag className="h-5 w-5" />
+          <span className="font-medium">Marketplace</span>
         </NavLink>
         
         <NavLink

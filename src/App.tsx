@@ -12,6 +12,7 @@ import Notifications from "./pages/Notifications";
 import Friends from "./pages/Friends";
 import Groups from "./pages/Groups";
 import Settings from "./pages/Settings";
+import Marketplace from "./pages/Marketplace";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/friends" element={<Friends />} />
           <Route path="/groups" element={<Groups />} />
+          <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/settings" element={<Settings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -1,4 +1,4 @@
-import { Home, PlusSquare, MessageCircle, Bell, User } from "lucide-react";
+import { Home, ShoppingBag, MessageCircle, Bell, User } from "lucide-react";
 import { NavLink } from "./NavLink";
 
 const MobileNav = () => {
@@ -15,12 +15,12 @@ const MobileNav = () => {
         </NavLink>
         
         <NavLink
-          to="/create"
+          to="/marketplace"
           className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-primary transition-colors"
           activeClassName="text-primary"
         >
-          <PlusSquare className="h-6 w-6" />
-          <span className="text-xs mt-0.5">Tạo bài</span>
+          <ShoppingBag className="h-6 w-6" />
+          <span className="text-xs mt-0.5">Chợ</span>
         </NavLink>
         
         <NavLink
