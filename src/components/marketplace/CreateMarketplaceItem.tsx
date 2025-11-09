@@ -99,7 +99,7 @@ const CreateMarketplaceItem = ({ open, onClose, onSuccess }: CreateMarketplaceIt
       // Upload image if exists
       if (imageFile) {
         const fileExt = imageFile.name.split(".").pop();
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from("covers")
           .upload(fileName, imageFile);
