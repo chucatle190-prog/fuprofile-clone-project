@@ -341,7 +341,7 @@ const MarketplaceItemDetail = () => {
         </main>
         <RightSidebar />
       </div>
-      <MobileNav />
+      <MobileNav user={user} />
     </div>
   );
 };

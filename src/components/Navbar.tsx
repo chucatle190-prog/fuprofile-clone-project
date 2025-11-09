@@ -9,6 +9,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 
 interface NavbarProps {
   user: UserType | null;
@@ -17,6 +18,7 @@ interface NavbarProps {
 const Navbar = ({ user }: NavbarProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { unreadCount } = useRealtimeNotifications(user?.id);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -91,9 +93,11 @@ const Navbar = ({ user }: NavbarProps) => {
             className="relative p-2 rounded-full hover:bg-accent/50 transition-colors"
           >
             <Bell className="h-5 w-5" />
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-              5
-            </Badge>
+            {unreadCount > 0 && (
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </Badge>
+            )}
           </NavLink>
 
           <DropdownMenu>

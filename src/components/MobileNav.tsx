@@ -1,7 +1,15 @@
-import { Home, ShoppingBag, MessageCircle, Bell, User } from "lucide-react";
+import { Home, ShoppingBag, MessageCircle, Bell, User as UserIcon } from "lucide-react";
 import { NavLink } from "./NavLink";
+import { Badge } from "./ui/badge";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
+import { User } from "@supabase/supabase-js";
 
-const MobileNav = () => {
+interface MobileNavProps {
+  user?: User | null;
+}
+
+const MobileNav = ({ user }: MobileNavProps) => {
+  const { unreadCount } = useRealtimeNotifications(user?.id);
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
       <div className="flex justify-around items-center h-14">
@@ -34,10 +42,15 @@ const MobileNav = () => {
         
         <NavLink
           to="/notifications"
-          className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-primary transition-colors"
+          className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-primary transition-colors relative"
           activeClassName="text-primary"
         >
           <Bell className="h-6 w-6" />
+          {unreadCount > 0 && (
+            <Badge className="absolute top-1 right-[calc(50%-12px)] h-4 w-4 flex items-center justify-center p-0 text-[10px]">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </Badge>
+          )}
           <span className="text-xs mt-0.5">Thông báo</span>
         </NavLink>
         
@@ -46,7 +59,7 @@ const MobileNav = () => {
           className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-primary transition-colors"
           activeClassName="text-primary"
         >
-          <User className="h-6 w-6" />
+          <UserIcon className="h-6 w-6" />
           <span className="text-xs mt-0.5">Cá nhân</span>
         </NavLink>
       </div>

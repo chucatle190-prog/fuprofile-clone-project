@@ -503,7 +503,7 @@ const Settings = () => {
         </main>
         <RightSidebar />
       </div>
-      <MobileNav />
+      <MobileNav user={user} />
     </div>
   );
 };

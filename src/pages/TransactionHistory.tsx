@@ -179,7 +179,7 @@ const TransactionHistory = () => {
         </main>
         <RightSidebar />
       </div>
-      <MobileNav />
+      <MobileNav user={user} />
     </div>
   );
 };

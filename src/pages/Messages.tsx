@@ -230,7 +230,7 @@ const Messages = () => {
           </Card>
         </main>
       </div>
-      <MobileNav />
+      <MobileNav user={user} />
     </div>
   );
 };

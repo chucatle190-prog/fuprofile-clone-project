@@ -454,7 +454,7 @@ const Profile = () => {
         </main>
         <RightSidebar />
       </div>
-      <MobileNav />
+      <MobileNav user={user} />
     </div>
   );
 };

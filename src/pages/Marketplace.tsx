@@ -253,7 +253,7 @@ const Marketplace = () => {
         </main>
         <RightSidebar />
       </div>
-      <MobileNav />
+      <MobileNav user={user} />
 
       {showCreate && (
         <CreateMarketplaceItem

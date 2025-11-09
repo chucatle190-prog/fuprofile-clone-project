@@ -55,7 +55,7 @@ const Groups = () => {
         </main>
         <RightSidebar />
       </div>
-      <MobileNav />
+      <MobileNav user={user} />
     </div>
   );
 };

@@ -7,7 +7,9 @@ import LeftSidebar from "@/components/LeftSidebar";
 import RightSidebar from "@/components/RightSidebar";
 import MobileNav from "@/components/MobileNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bell } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Bell, Check } from "lucide-react";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 
 interface Notification {
   id: string;
@@ -19,8 +21,8 @@ interface Notification {
 
 const Notifications = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const navigate = useNavigate();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useRealtimeNotifications(user?.id);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -28,7 +30,6 @@ const Notifications = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        fetchNotifications(session.user.id);
       }
     });
 
@@ -37,46 +38,11 @@ const Notifications = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        fetchNotifications(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
-
-  const fetchNotifications = async (userId: string) => {
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (data) setNotifications(data);
-  };
-
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel("notifications")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          fetchNotifications(user.id);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -85,11 +51,22 @@ const Notifications = () => {
         <LeftSidebar />
         <main className="flex-1 container max-w-2xl mx-auto px-4 py-6 mb-16 md:mb-0">
           <Card className="shadow-medium">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5 text-primary" />
-                Thông báo
+                Thông báo {unreadCount > 0 && `(${unreadCount} chưa đọc)`}
               </CardTitle>
+              {unreadCount > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={markAllAsRead}
+                  className="gap-2"
+                >
+                  <Check className="h-4 w-4" />
+                  Đánh dấu tất cả đã đọc
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {notifications.length === 0 ? (
@@ -101,11 +78,16 @@ const Notifications = () => {
                   {notifications.map((notif) => (
                     <div
                       key={notif.id}
-                      className={`p-4 rounded-lg ${
-                        notif.is_read ? "bg-secondary/30" : "bg-primary/10"
+                      onClick={() => !notif.is_read && markAsRead(notif.id)}
+                      className={`p-4 rounded-lg cursor-pointer transition-colors ${
+                        notif.is_read 
+                          ? "bg-secondary/30 hover:bg-secondary/40" 
+                          : "bg-primary/10 hover:bg-primary/20 border-l-4 border-primary"
                       }`}
                     >
-                      <p className="text-sm">{notif.content}</p>
+                      <p className={`text-sm ${!notif.is_read ? 'font-semibold' : ''}`}>
+                        {notif.content}
+                      </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {new Date(notif.created_at).toLocaleString("vi-VN")}
                       </p>
@@ -118,7 +100,7 @@ const Notifications = () => {
         </main>
         <RightSidebar />
       </div>
-      <MobileNav />
+      <MobileNav user={user} />
     </div>
   );
 };
