@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Wallet, AlertCircle } from "lucide-react";
 import { useMetaMask } from "@/hooks/useMetaMask";
 
@@ -85,6 +86,47 @@ const MetaMaskConnect = () => {
               <p className="font-semibold">{parseFloat(usdtBalance).toFixed(2)} USDT</p>
             </div>
           </div>
+
+          {parseFloat(usdtBalance) === 0 && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-2">
+                  <p className="font-medium text-sm">Cách lấy USDT testnet:</p>
+                  <ol className="text-xs space-y-1 list-decimal list-inside ml-2">
+                    <li>
+                      Lấy BNB testnet từ{" "}
+                      <a
+                        href="https://testnet.bnbchain.org/faucet-smart"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline font-medium"
+                      >
+                        BSC Faucet
+                      </a>
+                    </li>
+                    <li>
+                      Thêm USDT token vào MetaMask:{" "}
+                      <code className="text-xs bg-muted px-1 py-0.5 rounded break-all">
+                        0x337610d27c682E347C9cD60BD4b3b107C9d34dDd
+                      </code>
+                    </li>
+                    <li>
+                      Swap BNB sang USDT trên{" "}
+                      <a
+                        href="https://pancakeswap.finance/?chain=bscTestnet"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline font-medium"
+                      >
+                        PancakeSwap Testnet
+                      </a>
+                    </li>
+                  </ol>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </CardContent>
     </Card>
