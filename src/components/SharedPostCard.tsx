@@ -9,7 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import ReactionPicker from "./ReactionPicker";
-import SharePostDialog from "./SharePostDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,28 +30,36 @@ interface Comment {
   profiles: Profile;
 }
 
-interface Post {
+interface OriginalPost {
   id: string;
   content: string;
   image_url: string | null;
   created_at: string;
-  user_id: string;
   profiles: Profile;
 }
 
-interface PostCardProps {
-  post: Post;
+interface Share {
+  id: string;
+  content: string | null;
+  created_at: string;
+  user_id: string;
+  post_id: string;
+  profiles: Profile;
+  posts: OriginalPost;
+}
+
+interface SharedPostCardProps {
+  share: Share;
   currentUserId?: string;
   onUpdate: () => void;
 }
 
-const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
+const SharedPostCard = ({ share, currentUserId, onUpdate }: SharedPostCardProps) => {
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState<Comment[]>([]);
   const [currentReaction, setCurrentReaction] = useState<string | undefined>();
   const [reactionsCount, setReactionsCount] = useState(0);
-  const [sharesCount, setSharesCount] = useState(0);
   const { toast } = useToast();
 
   const fetchComments = async () => {
@@ -66,7 +73,7 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
           full_name
         )
       `)
-      .eq("post_id", post.id)
+      .eq("post_id", share.post_id)
       .order("created_at", { ascending: true });
 
     if (error) {
@@ -81,7 +88,7 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
     const { count } = await supabase
       .from("reactions")
       .select("*", { count: "exact", head: true })
-      .eq("post_id", post.id);
+      .eq("post_id", share.post_id);
 
     setReactionsCount(count || 0);
 
@@ -89,7 +96,7 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
       const { data } = await supabase
         .from("reactions")
         .select("reaction_type")
-        .eq("post_id", post.id)
+        .eq("post_id", share.post_id)
         .eq("user_id", currentUserId)
         .maybeSingle();
 
@@ -97,19 +104,9 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
     }
   };
 
-  const fetchShares = async () => {
-    const { count } = await supabase
-      .from("shares")
-      .select("*", { count: "exact", head: true })
-      .eq("post_id", post.id);
-
-    setSharesCount(count || 0);
-  };
-
   useEffect(() => {
     fetchComments();
     fetchReactions();
-    fetchShares();
   }, []);
 
   const handleReaction = async (reactionType: string) => {
@@ -120,14 +117,14 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
         await supabase
           .from("reactions")
           .delete()
-          .eq("post_id", post.id)
+          .eq("post_id", share.post_id)
           .eq("user_id", currentUserId);
         setCurrentReaction(undefined);
       } else {
         await supabase
           .from("reactions")
           .upsert({
-            post_id: post.id,
+            post_id: share.post_id,
             user_id: currentUserId,
             reaction_type: reactionType,
           });
@@ -144,14 +141,13 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
     }
   };
 
-
   const handleComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUserId || !newComment.trim()) return;
 
     try {
       await supabase.from("comments").insert({
-        post_id: post.id,
+        post_id: share.post_id,
         user_id: currentUserId,
         content: newComment,
       });
@@ -168,15 +164,15 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
   };
 
   const handleDelete = async () => {
-    if (currentUserId !== post.user_id) return;
+    if (currentUserId !== share.user_id) return;
 
     try {
-      const { error } = await supabase.from("posts").delete().eq("id", post.id);
+      const { error } = await supabase.from("shares").delete().eq("id", share.id);
       if (error) throw error;
 
       toast({
         title: "Thành công",
-        description: "Đã xóa bài viết",
+        description: "Đã xóa bài chia sẻ",
       });
       onUpdate();
     } catch (error: any) {
@@ -191,20 +187,20 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
   return (
     <Card className="shadow-soft hover:shadow-medium transition-shadow">
       <CardContent className="p-4">
-        {/* Header */}
+        {/* Share Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
             <Avatar>
               <AvatarFallback className="bg-primary text-primary-foreground">
-                {post.profiles.username[0].toUpperCase()}
+                {share.profiles.username[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
               <p className="font-semibold text-foreground">
-                {post.profiles.full_name || post.profiles.username}
+                {share.profiles.full_name || share.profiles.username}
               </p>
               <p className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(post.created_at), {
+                {formatDistanceToNow(new Date(share.created_at), {
                   addSuffix: true,
                   locale: vi,
                 })}
@@ -218,27 +214,50 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {currentUserId === post.user_id && (
+              {currentUserId === share.user_id && (
                 <DropdownMenuItem onClick={handleDelete} className="text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Xóa bài viết
+                  Xóa bài chia sẻ
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
-        {/* Content */}
-        <p className="text-foreground mb-3 whitespace-pre-wrap">{post.content}</p>
-
-        {/* Image */}
-        {post.image_url && (
-          <img
-            src={post.image_url}
-            alt="Post"
-            className="w-full rounded-lg mb-3 object-cover max-h-[500px] cursor-pointer hover:brightness-95 transition-all"
-          />
+        {/* Share Content */}
+        {share.content && (
+          <p className="text-foreground mb-3 whitespace-pre-wrap">{share.content}</p>
         )}
+
+        {/* Original Post (nested) */}
+        <div className="border border-border rounded-lg p-4 bg-muted/30 mb-3">
+          <div className="flex items-center gap-3 mb-2">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                {share.posts.profiles.username[0].toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-semibold text-sm">
+                {share.posts.profiles.full_name || share.posts.profiles.username}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {formatDistanceToNow(new Date(share.posts.created_at), {
+                  addSuffix: true,
+                  locale: vi,
+                })}
+              </p>
+            </div>
+          </div>
+          <p className="text-sm whitespace-pre-wrap mb-2">{share.posts.content}</p>
+          {share.posts.image_url && (
+            <img
+              src={share.posts.image_url}
+              alt="Original post"
+              className="w-full rounded-lg object-cover max-h-[400px]"
+            />
+          )}
+        </div>
 
         {/* Reactions Summary */}
         <div className="flex items-center justify-between py-2 text-sm text-muted-foreground">
@@ -249,11 +268,6 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
             {comments.length > 0 && (
               <button className="hover:underline" onClick={() => setShowComments(!showComments)}>
                 {comments.length} bình luận
-              </button>
-            )}
-            {sharesCount > 0 && (
-              <button className="hover:underline">
-                {sharesCount} lượt chia sẻ
               </button>
             )}
           </div>
@@ -272,15 +286,6 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
             <MessageCircle className="h-4 w-4" />
             Bình luận
           </Button>
-
-          <SharePostDialog 
-            post={post} 
-            currentUserId={currentUserId}
-            onShareComplete={() => {
-              fetchShares();
-              onUpdate();
-            }}
-          />
         </div>
 
         {/* Comments Section */}
@@ -336,4 +341,4 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
   );
 };
 
-export default PostCard;
+export default SharedPostCard;

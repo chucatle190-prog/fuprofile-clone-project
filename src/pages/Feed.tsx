@@ -8,6 +8,7 @@ import RightSidebar from "@/components/RightSidebar";
 import MobileNav from "@/components/MobileNav";
 import CreatePost from "@/components/CreatePost";
 import PostCard from "@/components/PostCard";
+import SharedPostCard from "@/components/SharedPostCard";
 import StoryCarousel from "@/components/StoryCarousel";
 import { useToast } from "@/hooks/use-toast";
 
@@ -27,9 +28,23 @@ interface Post {
   profiles: Profile;
 }
 
+interface Share {
+  id: string;
+  content: string | null;
+  created_at: string;
+  user_id: string;
+  post_id: string;
+  profiles: Profile;
+  posts: Post;
+}
+
+type FeedItem = 
+  | { type: 'post'; data: Post }
+  | { type: 'share'; data: Share };
+
 const Feed = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -54,9 +69,10 @@ const Feed = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const fetchPosts = async () => {
+  const fetchFeed = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch posts
+      const { data: postsData, error: postsError } = await supabase
         .from("posts")
         .select(`
           *,
@@ -69,8 +85,64 @@ const Feed = () => {
         `)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setPosts(data || []);
+      if (postsError) throw postsError;
+
+      // Fetch shares with manual joins
+      const { data: sharesData, error: sharesError } = await supabase
+        .from("shares")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (sharesError) throw sharesError;
+
+      // Fetch related data for shares
+      const enrichedShares: Share[] = [];
+      if (sharesData) {
+        for (const share of sharesData) {
+          const { data: shareProfile } = await supabase
+            .from("profiles")
+            .select("id, username, full_name, avatar_url")
+            .eq("id", share.user_id)
+            .single();
+
+          const { data: originalPost } = await supabase
+            .from("posts")
+            .select(`
+              id,
+              content,
+              image_url,
+              created_at,
+              profiles:user_id (
+                id,
+                username,
+                full_name,
+                avatar_url
+              )
+            `)
+            .eq("id", share.post_id)
+            .single();
+
+          if (shareProfile && originalPost) {
+            enrichedShares.push({
+              ...share,
+              profiles: shareProfile,
+              posts: originalPost as Post,
+            });
+          }
+        }
+      }
+
+      // Combine and sort by created_at
+      const combined: FeedItem[] = [
+        ...(postsData || []).map(post => ({ type: 'post' as const, data: post as Post })),
+        ...enrichedShares.map(share => ({ type: 'share' as const, data: share })),
+      ].sort((a, b) => {
+        const dateA = new Date(a.data.created_at).getTime();
+        const dateB = new Date(b.data.created_at).getTime();
+        return dateB - dateA;
+      });
+
+      setFeedItems(combined);
     } catch (error: any) {
       toast({
         title: "Lỗi",
@@ -83,9 +155,9 @@ const Feed = () => {
   };
 
   useEffect(() => {
-    fetchPosts();
+    fetchFeed();
 
-    const channel = supabase
+    const postsChannel = supabase
       .channel("posts")
       .on(
         "postgres_changes",
@@ -95,13 +167,29 @@ const Feed = () => {
           table: "posts",
         },
         () => {
-          fetchPosts();
+          fetchFeed();
+        }
+      )
+      .subscribe();
+
+    const sharesChannel = supabase
+      .channel("shares")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "shares",
+        },
+        () => {
+          fetchFeed();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(postsChannel);
+      supabase.removeChannel(sharesChannel);
     };
   }, []);
 
@@ -112,20 +200,34 @@ const Feed = () => {
         <LeftSidebar />
         <main className="flex-1 container max-w-2xl mx-auto px-4 py-6 mb-16 md:mb-0">
           <StoryCarousel currentUserId={user?.id} />
-          <CreatePost onPostCreated={fetchPosts} />
+          <CreatePost onPostCreated={fetchFeed} />
           <div className="space-y-4 mt-6">
             {loading ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">Đang tải...</p>
               </div>
-            ) : posts.length === 0 ? (
+            ) : feedItems.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">Chưa có bài đăng nào</p>
               </div>
             ) : (
-              posts.map((post) => (
-                <PostCard key={post.id} post={post} currentUserId={user?.id} onUpdate={fetchPosts} />
-              ))
+              feedItems.map((item) => 
+                item.type === 'post' ? (
+                  <PostCard 
+                    key={`post-${item.data.id}`} 
+                    post={item.data} 
+                    currentUserId={user?.id} 
+                    onUpdate={fetchFeed} 
+                  />
+                ) : (
+                  <SharedPostCard 
+                    key={`share-${item.data.id}`} 
+                    share={item.data} 
+                    currentUserId={user?.id} 
+                    onUpdate={fetchFeed} 
+                  />
+                )
+              )
             )}
           </div>
         </main>
