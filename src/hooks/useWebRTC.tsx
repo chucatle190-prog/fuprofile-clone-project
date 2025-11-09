@@ -21,7 +21,60 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
   const signalingChannel = useRef<any>(null);
   const signalingReadyRef = useRef(false);
   const endCallRef = useRef<() => void>(() => {});
+  const ringtoneIntervalRef = useRef<number | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const { toast } = useToast();
+
+  // Create ringtone function
+  const playRingtone = useCallback(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
+    }
+    
+    const ctx = audioContextRef.current;
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    // Play a beep
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    oscillator.frequency.value = 440; // A4 note
+    gainNode.gain.value = 0.15;
+    
+    oscillator.start();
+    setTimeout(() => oscillator.stop(), 400);
+  }, []);
+
+  const startRingtone = useCallback(() => {
+    // Play immediately
+    playRingtone();
+    
+    // Then play every 2 seconds
+    ringtoneIntervalRef.current = window.setInterval(() => {
+      playRingtone();
+    }, 2000);
+  }, [playRingtone]);
+
+  const stopRingtone = useCallback(() => {
+    if (ringtoneIntervalRef.current) {
+      clearInterval(ringtoneIntervalRef.current);
+      ringtoneIntervalRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopRingtone();
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
+  }, [stopRingtone]);
 
   const configuration: RTCConfiguration = {
     iceServers: [
@@ -45,6 +98,9 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
         
         setCallState('ringing');
         setCallType(payload.callType);
+        
+        // Play ringtone
+        startRingtone();
         
         // Store offer to process after user accepts
         signalingChannel.current.offer = payload.offer;
@@ -175,6 +231,10 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
   const acceptCall = async () => {
     try {
       console.log('Accepting call...');
+      
+      // Stop ringtone
+      stopRingtone();
+      
       await ensureSignalingReady();
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
@@ -222,6 +282,10 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
 
   const rejectCall = () => {
     console.log('Rejecting call');
+    
+    // Stop ringtone
+    stopRingtone();
+    
     signalingChannel.current?.send({
       type: 'broadcast',
       event: 'end-call',
@@ -232,6 +296,10 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
 
   const endCall = useCallback(() => {
     console.log('Ending call');
+    
+    // Stop ringtone
+    stopRingtone();
+    
     localStream?.getTracks().forEach((track) => {
       console.log('Stopping local track:', track.kind);
       track.stop();
@@ -249,7 +317,7 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
     setCallState('idle');
     
     onCallEnd?.();
-  }, [localStream, remoteStream, onCallEnd]);
+  }, [localStream, remoteStream, onCallEnd, stopRingtone]);
 
   useEffect(() => {
     endCallRef.current = endCall;

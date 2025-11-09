@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import MessageBubble from "./MessageBubble";
 import CallDialog from "./CallDialog";
+import IncomingCallBanner from "./IncomingCallBanner";
 import { useWebRTC } from "@/hooks/useWebRTC";
 
 interface Message {
@@ -136,6 +137,16 @@ const ChatWindow = ({ conversationId, currentUserId, otherUser }: ChatWindowProp
 
   return (
     <div className="h-full flex flex-col">
+      {/* Incoming Call Banner */}
+      <IncomingCallBanner
+        show={callState === 'ringing'}
+        callerName={displayName}
+        callerAvatar={otherUser?.avatar_url}
+        callType={callType}
+        onAccept={acceptCall}
+        onReject={rejectCall}
+      />
+
       {/* Header */}
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
