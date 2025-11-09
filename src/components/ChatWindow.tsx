@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import MessageBubble from "./MessageBubble";
 import CallDialog from "./CallDialog";
 import IncomingCallBanner from "./IncomingCallBanner";
+import { PermissionDialog } from "./PermissionDialog";
 import { useWebRTC } from "@/hooks/useWebRTC";
 
 interface Message {
@@ -47,6 +48,9 @@ const ChatWindow = ({ conversationId, currentUserId, otherUser }: ChatWindowProp
     endCall,
     toggleAudio,
     toggleVideo,
+    showPermissionDialog,
+    setShowPermissionDialog,
+    permissionType,
   } = useWebRTC({
     conversationId,
     currentUserId,
@@ -233,6 +237,13 @@ const ChatWindow = ({ conversationId, currentUserId, otherUser }: ChatWindowProp
         onEnd={endCall}
         onToggleAudio={toggleAudio}
         onToggleVideo={toggleVideo}
+      />
+
+      {/* Permission Dialog */}
+      <PermissionDialog
+        open={showPermissionDialog}
+        onClose={() => setShowPermissionDialog(false)}
+        permissionType={permissionType}
       />
     </div>
   );

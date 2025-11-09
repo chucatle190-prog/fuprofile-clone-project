@@ -16,6 +16,8 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
   const [callType, setCallType] = useState<CallType>('audio');
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
+  const [permissionType, setPermissionType] = useState<'audio' | 'video' | 'both'>('audio');
   
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const signalingChannel = useRef<any>(null);
@@ -197,9 +199,49 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
     }
   };
 
+  const checkPermissions = async (type: CallType): Promise<boolean> => {
+    try {
+      // Check if permissions API is available
+      if (!navigator.permissions) {
+        console.log('Permissions API not available, will try direct access');
+        return true;
+      }
+
+      const audioPermission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+      
+      if (type === 'video') {
+        const videoPermission = await navigator.permissions.query({ name: 'camera' as PermissionName });
+        
+        if (audioPermission.state === 'denied' || videoPermission.state === 'denied') {
+          setPermissionType('both');
+          setShowPermissionDialog(true);
+          return false;
+        }
+      } else {
+        if (audioPermission.state === 'denied') {
+          setPermissionType('audio');
+          setShowPermissionDialog(true);
+          return false;
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.log('Permission check not supported, will try direct access:', error);
+      return true;
+    }
+  };
+
   const startCall = async (type: CallType) => {
     try {
       console.log('Starting call, type:', type);
+      
+      // Check permissions first
+      const hasPermission = await checkPermissions(type);
+      if (!hasPermission) {
+        return;
+      }
+
       await ensureSignalingReady();
       setCallType(type);
       setCallState('calling');
@@ -236,11 +278,18 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
       console.log('Offer sent successfully');
     } catch (error) {
       console.error('Error starting call:', error);
-      toast({
-        title: 'Lỗi',
-        description: error instanceof Error ? error.message : 'Không thể bắt đầu cuộc gọi',
-        variant: 'destructive',
-      });
+      
+      // Check if it's a permission error
+      if (error instanceof DOMException && error.name === 'NotAllowedError') {
+        setPermissionType(callType === 'video' ? 'both' : 'audio');
+        setShowPermissionDialog(true);
+      } else {
+        toast({
+          title: 'Lỗi',
+          description: error instanceof Error ? error.message : 'Không thể bắt đầu cuộc gọi',
+          variant: 'destructive',
+        });
+      }
       setCallState('idle');
     }
   };
@@ -288,11 +337,18 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
       console.log('Call accepted successfully');
     } catch (error) {
       console.error('Error accepting call:', error);
-      toast({
-        title: 'Lỗi',
-        description: error instanceof Error ? error.message : 'Không thể chấp nhận cuộc gọi',
-        variant: 'destructive',
-      });
+      
+      // Check if it's a permission error
+      if (error instanceof DOMException && error.name === 'NotAllowedError') {
+        setPermissionType(callType === 'video' ? 'both' : 'audio');
+        setShowPermissionDialog(true);
+      } else {
+        toast({
+          title: 'Lỗi',
+          description: error instanceof Error ? error.message : 'Không thể chấp nhận cuộc gọi',
+          variant: 'destructive',
+        });
+      }
       endCall();
     }
   };
@@ -380,5 +436,8 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
     endCall,
     toggleAudio,
     toggleVideo,
+    showPermissionDialog,
+    setShowPermissionDialog,
+    permissionType,
   };
 };
