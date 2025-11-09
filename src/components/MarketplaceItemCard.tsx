@@ -70,9 +70,9 @@ const MarketplaceItemCard = ({ item, currentUserId, onUpdate }: MarketplaceItemC
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
+    return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "VND",
+      currency: "USD",
     }).format(price);
   };
 

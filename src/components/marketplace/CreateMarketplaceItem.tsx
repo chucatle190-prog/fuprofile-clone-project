@@ -191,7 +191,7 @@ const CreateMarketplaceItem = ({ open, onClose, onSuccess }: CreateMarketplaceIt
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="price">Giá (VNĐ) *</Label>
+              <Label htmlFor="price">Giá (USD) *</Label>
               <Input
                 id="price"
                 type="number"
