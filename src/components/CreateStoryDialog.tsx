@@ -41,9 +41,9 @@ const CreateStoryDialog = ({ open, onOpenChange, userId, onStoryCreated }: Creat
       return;
     }
 
-    const maxSize = isImage ? 5 * 1024 * 1024 : 50 * 1024 * 1024;
-    if (selectedFile.size > maxSize) {
-      toast.error(`Kích thước ${isImage ? 'ảnh' : 'video'} quá lớn (tối đa ${isImage ? '5MB' : '50MB'})`);
+    const maxSize = isImage ? 5 : 50; // 5MB for images, 50MB for videos
+    if (selectedFile.size > maxSize * 1024 * 1024) {
+      toast.error(`Kích thước ${isImage ? 'ảnh' : 'video'} không được vượt quá ${maxSize}MB`);
       return;
     }
 
@@ -72,11 +72,10 @@ const CreateStoryDialog = ({ open, onOpenChange, userId, onStoryCreated }: Creat
     setUploading(true);
 
     try {
-      // Determine file type and bucket
       const isVideo = file.type.startsWith('video/');
-      const bucket = isVideo ? 'videos' : 'avatars';
       const fileExt = file.name.split('.').pop();
       const fileName = `${userId}/story_${Date.now()}.${fileExt}`;
+      const bucket = isVideo ? 'videos' : 'avatars';
 
       const { error: uploadError } = await supabase.storage
         .from(bucket)
@@ -148,7 +147,7 @@ const CreateStoryDialog = ({ open, onOpenChange, userId, onStoryCreated }: Creat
                 Nhấp để chọn ảnh hoặc video
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Ảnh: PNG, JPG (5MB) • Video: MP4, MOV (50MB)
+                Ảnh: PNG, JPG (tối đa 5MB) | Video: MP4, MOV (tối đa 50MB)
               </p>
             </div>
           ) : showMusicPicker ? (
@@ -199,13 +198,13 @@ const CreateStoryDialog = ({ open, onOpenChange, userId, onStoryCreated }: Creat
               <div className="relative">
                 {file?.type.startsWith('video/') ? (
                   <video
-                    src={preview || ""}
+                    src={preview || ''}
                     controls
-                    className="w-full rounded-lg max-h-96"
+                    className="w-full rounded-lg max-h-96 bg-secondary"
                   />
                 ) : (
                   <img
-                    src={preview}
+                    src={preview || ''}
                     alt="Preview"
                     className="w-full rounded-lg max-h-96 object-contain bg-secondary"
                   />

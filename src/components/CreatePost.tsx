@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ImagePlus, Video, Loader2, X } from "lucide-react";
+import { ImagePlus, Loader2, Video, X } from "lucide-react";
 
 interface CreatePostProps {
   onPostCreated: () => void;
@@ -15,20 +15,20 @@ const CreatePost = ({ onPostCreated }: CreatePostProps) => {
   const [loading, setLoading] = useState(false);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-  const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "video") => {
+  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const maxSize = type === "image" ? 5 * 1024 * 1024 : 50 * 1024 * 1024; // 5MB for images, 50MB for videos
-    if (file.size > maxSize) {
+    const maxSize = type === 'image' ? 5 : 50; // 5MB for images, 50MB for videos
+    if (file.size > maxSize * 1024 * 1024) {
       toast({
         title: "Lỗi",
-        description: `Kích thước ${type === "image" ? "ảnh" : "video"} quá lớn (tối đa ${type === "image" ? "5MB" : "50MB"})`,
+        description: `Kích thước ${type === 'image' ? 'ảnh' : 'video'} không được vượt quá ${maxSize}MB`,
         variant: "destructive",
       });
       return;
@@ -36,6 +36,7 @@ const CreatePost = ({ onPostCreated }: CreatePostProps) => {
 
     setMediaFile(file);
     setMediaType(type);
+    
     const reader = new FileReader();
     reader.onloadend = () => {
       setMediaPreview(reader.result as string);
@@ -43,28 +44,12 @@ const CreatePost = ({ onPostCreated }: CreatePostProps) => {
     reader.readAsDataURL(file);
   };
 
-  const clearMedia = () => {
+  const removeMedia = () => {
     setMediaFile(null);
     setMediaPreview(null);
     setMediaType(null);
-  };
-
-  const uploadMedia = async (file: File, userId: string) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/${Date.now()}.${fileExt}`;
-    const bucket = mediaType === "image" ? "avatars" : "videos";
-
-    const { error: uploadError } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(fileName);
-
-    return data.publicUrl;
+    if (imageInputRef.current) imageInputRef.current.value = '';
+    if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,20 +61,38 @@ const CreatePost = ({ onPostCreated }: CreatePostProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Chưa đăng nhập");
 
-      let mediaUrl = null;
-      if (mediaFile) {
-        mediaUrl = await uploadMedia(mediaFile, user.id);
+      let mediaUrl: string | null = null;
+
+      // Upload media if exists
+      if (mediaFile && mediaType) {
+        const fileExt = mediaFile.name.split('.').pop();
+        const fileName = `${user.id}/post_${Date.now()}.${fileExt}`;
+        const bucket = mediaType === 'image' ? 'avatars' : 'videos';
+
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(fileName, mediaFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+          .from(bucket)
+          .getPublicUrl(fileName);
+
+        mediaUrl = data.publicUrl;
       }
 
       const postData: any = {
-        content: content.trim() || "",
+        content: content.trim(),
         user_id: user.id,
       };
 
-      if (mediaType === "image") {
-        postData.image_url = mediaUrl;
-      } else if (mediaType === "video") {
-        postData.video_url = mediaUrl;
+      if (mediaUrl) {
+        if (mediaType === 'image') {
+          postData.image_url = mediaUrl;
+        } else {
+          postData.video_url = mediaUrl;
+        }
       }
 
       const { error } = await supabase.from("posts").insert(postData);
@@ -97,7 +100,7 @@ const CreatePost = ({ onPostCreated }: CreatePostProps) => {
       if (error) throw error;
 
       setContent("");
-      clearMedia();
+      removeMedia();
       onPostCreated();
       toast({
         title: "Thành công",
@@ -127,26 +130,18 @@ const CreatePost = ({ onPostCreated }: CreatePostProps) => {
           
           {/* Media Preview */}
           {mediaPreview && (
-            <div className="relative">
-              {mediaType === "image" ? (
-                <img
-                  src={mediaPreview}
-                  alt="Preview"
-                  className="w-full rounded-lg max-h-96 object-cover"
-                />
+            <div className="relative rounded-lg overflow-hidden bg-secondary">
+              {mediaType === 'image' ? (
+                <img src={mediaPreview} alt="Preview" className="w-full max-h-96 object-contain" />
               ) : (
-                <video
-                  src={mediaPreview}
-                  controls
-                  className="w-full rounded-lg max-h-96"
-                />
+                <video src={mediaPreview} controls className="w-full max-h-96" />
               )}
               <Button
                 type="button"
                 variant="secondary"
                 size="icon"
                 className="absolute top-2 right-2"
-                onClick={clearMedia}
+                onClick={removeMedia}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -155,20 +150,36 @@ const CreatePost = ({ onPostCreated }: CreatePostProps) => {
 
           <div className="flex justify-between items-center">
             <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="ghost"
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleMediaSelect(e, 'image')}
+              />
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={(e) => handleMediaSelect(e, 'video')}
+              />
+              <Button 
+                type="button" 
+                variant="ghost" 
                 size="sm"
                 onClick={() => imageInputRef.current?.click()}
+                disabled={!!mediaFile}
               >
                 <ImagePlus className="h-5 w-5 mr-2" />
                 Ảnh
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
+              <Button 
+                type="button" 
+                variant="ghost" 
                 size="sm"
                 onClick={() => videoInputRef.current?.click()}
+                disabled={!!mediaFile}
               >
                 <Video className="h-5 w-5 mr-2" />
                 Video
@@ -179,21 +190,6 @@ const CreatePost = ({ onPostCreated }: CreatePostProps) => {
               Đăng
             </Button>
           </div>
-          
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => handleMediaSelect(e, "image")}
-          />
-          <input
-            ref={videoInputRef}
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={(e) => handleMediaSelect(e, "video")}
-          />
         </form>
       </CardContent>
     </Card>
