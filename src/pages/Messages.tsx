@@ -35,6 +35,12 @@ const Messages = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Pre-select conversation from navigation state (works on mobile too)
+  useEffect(() => {
+    const passed = (location as any).state?.conversationId;
+    if (passed) setSelectedConversationId(passed);
+  }, [location]);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
@@ -108,7 +114,7 @@ const Messages = () => {
           .eq("conversation_id", conv.id)
           .order("created_at", { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
         return {
           ...conv,
