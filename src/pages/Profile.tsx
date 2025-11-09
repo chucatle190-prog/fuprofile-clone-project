@@ -16,6 +16,7 @@ import PostCard from "@/components/PostCard";
 import PhotosGrid from "@/components/profile/PhotosGrid";
 import FriendsList from "@/components/profile/FriendsList";
 import AboutSection from "@/components/profile/AboutSection";
+import AvatarViewer from "@/components/AvatarViewer";
 
 interface Profile {
   id: string;
@@ -65,6 +66,7 @@ const Profile = () => {
   });
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [showAvatarViewer, setShowAvatarViewer] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -369,7 +371,10 @@ const Profile = () => {
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div className="flex flex-col md:flex-row items-center md:items-end gap-4">
                   <div className="relative">
-                    <Avatar className="h-32 w-32 border-4 border-card">
+                    <Avatar 
+                      className="h-32 w-32 border-4 border-card cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => setShowAvatarViewer(true)}
+                    >
                       <AvatarImage src={profile?.avatar_url || ""} />
                       <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
                         {profile?.username[0].toUpperCase()}
@@ -387,7 +392,10 @@ const Profile = () => {
                         size="icon"
                         variant="secondary"
                         className="absolute bottom-0 right-0 rounded-full h-10 w-10"
-                        onClick={() => avatarInputRef.current?.click()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          avatarInputRef.current?.click();
+                        }}
                         disabled={uploading}
                       >
                         <Camera className="h-4 w-4" />
@@ -498,6 +506,17 @@ const Profile = () => {
         <RightSidebar />
       </div>
       <MobileNav user={user} />
+      
+      {/* Avatar Viewer */}
+      {profile && (
+        <AvatarViewer
+          open={showAvatarViewer}
+          onOpenChange={setShowAvatarViewer}
+          avatarUrl={profile.avatar_url}
+          username={profile.username}
+          fullName={profile.full_name}
+        />
+      )}
     </div>
   );
 };

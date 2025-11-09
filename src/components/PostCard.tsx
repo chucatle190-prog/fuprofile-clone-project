@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "./ui/card";
-import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { MessageCircle, Trash2, Send, MoreHorizontal } from "lucide-react";
@@ -11,6 +11,7 @@ import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import ReactionPicker from "./ReactionPicker";
 import SharePostDialog from "./SharePostDialog";
+import AvatarViewer from "./AvatarViewer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +23,7 @@ interface Profile {
   id: string;
   username: string;
   full_name: string | null;
+  avatar_url: string | null;
 }
 
 interface Comment {
@@ -55,6 +57,8 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
   const [currentReaction, setCurrentReaction] = useState<string | undefined>();
   const [reactionsCount, setReactionsCount] = useState(0);
   const [sharesCount, setSharesCount] = useState(0);
+  const [showAvatarViewer, setShowAvatarViewer] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState<{ url: string | null; username: string; fullName: string | null } | null>(null);
   const { toast } = useToast();
 
   const fetchComments = async () => {
@@ -65,7 +69,8 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
         profiles:user_id (
           id,
           username,
-          full_name
+          full_name,
+          avatar_url
         )
       `)
       .eq("post_id", post.id)
@@ -195,16 +200,28 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
       <CardContent className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
-          <div 
-            className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => navigate(`/profile/${post.profiles.username}`)}
-          >
-            <Avatar>
+          <div className="flex items-center gap-3">
+            <Avatar 
+              className="cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedAvatar({
+                  url: post.profiles.avatar_url,
+                  username: post.profiles.username,
+                  fullName: post.profiles.full_name
+                });
+                setShowAvatarViewer(true);
+              }}
+            >
+              <AvatarImage src={post.profiles.avatar_url || ""} />
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {post.profiles.username[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div 
+              className="cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => navigate(`/profile/${post.profiles.username}`)}
+            >
               <p className="font-semibold text-foreground">
                 {post.profiles.full_name || post.profiles.username}
               </p>
@@ -295,8 +312,17 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
               <div key={comment.id} className="flex gap-2">
                 <Avatar 
                   className="h-8 w-8 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={() => navigate(`/profile/${comment.profiles.username}`)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedAvatar({
+                      url: comment.profiles.avatar_url,
+                      username: comment.profiles.username,
+                      fullName: comment.profiles.full_name
+                    });
+                    setShowAvatarViewer(true);
+                  }}
                 >
+                  <AvatarImage src={comment.profiles.avatar_url || ""} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                     {comment.profiles.username[0].toUpperCase()}
                   </AvatarFallback>
@@ -341,6 +367,17 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
               </div>
             </form>
           </div>
+        )}
+
+        {/* Avatar Viewer */}
+        {selectedAvatar && (
+          <AvatarViewer
+            open={showAvatarViewer}
+            onOpenChange={setShowAvatarViewer}
+            avatarUrl={selectedAvatar.url}
+            username={selectedAvatar.username}
+            fullName={selectedAvatar.fullName}
+          />
         )}
       </CardContent>
     </Card>
