@@ -38,6 +38,7 @@ interface Post {
   id: string;
   content: string;
   image_url: string | null;
+  video_url: string | null;
   created_at: string;
   user_id: string;
   profiles: Profile;
@@ -253,12 +254,19 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
         {/* Content */}
         <p className="text-foreground mb-3 whitespace-pre-wrap">{post.content}</p>
 
-        {/* Image */}
+        {/* Media - Image or Video */}
         {post.image_url && (
           <img
             src={post.image_url}
             alt="Post"
             className="w-full rounded-lg mb-3 object-cover max-h-[500px] cursor-pointer hover:brightness-95 transition-all"
+          />
+        )}
+        {post.video_url && (
+          <video
+            src={post.video_url}
+            controls
+            className="w-full rounded-lg mb-3 max-h-[500px]"
           />
         )}
 

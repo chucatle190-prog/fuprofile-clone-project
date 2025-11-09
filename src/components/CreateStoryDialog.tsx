@@ -33,13 +33,17 @@ const CreateStoryDialog = ({ open, onOpenChange, userId, onStoryCreated }: Creat
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    if (!selectedFile.type.startsWith('image/')) {
-      toast.error("Vui lòng chọn file ảnh");
+    const isImage = selectedFile.type.startsWith('image/');
+    const isVideo = selectedFile.type.startsWith('video/');
+
+    if (!isImage && !isVideo) {
+      toast.error("Vui lòng chọn file ảnh hoặc video");
       return;
     }
 
-    if (selectedFile.size > 5 * 1024 * 1024) {
-      toast.error("Kích thước ảnh không được vượt quá 5MB");
+    const maxSize = isImage ? 5 * 1024 * 1024 : 50 * 1024 * 1024;
+    if (selectedFile.size > maxSize) {
+      toast.error(`Kích thước ${isImage ? 'ảnh' : 'video'} quá lớn (tối đa ${isImage ? '5MB' : '50MB'})`);
       return;
     }
 
@@ -68,19 +72,21 @@ const CreateStoryDialog = ({ open, onOpenChange, userId, onStoryCreated }: Creat
     setUploading(true);
 
     try {
-      // Upload to avatars bucket (reusing for stories)
+      // Determine file type and bucket
+      const isVideo = file.type.startsWith('video/');
+      const bucket = isVideo ? 'videos' : 'avatars';
       const fileExt = file.name.split('.').pop();
       const fileName = `${userId}/story_${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('avatars')
+        .from(bucket)
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
       // Get public URL
       const { data } = supabase.storage
-        .from('avatars')
+        .from(bucket)
         .getPublicUrl(fileName);
 
       // Create story in database with music
@@ -139,10 +145,10 @@ const CreateStoryDialog = ({ open, onOpenChange, userId, onStoryCreated }: Creat
             >
               <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-sm text-muted-foreground">
-                Nhấp để chọn ảnh
+                Nhấp để chọn ảnh hoặc video
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                PNG, JPG, JPEG tối đa 5MB
+                Ảnh: PNG, JPG (5MB) • Video: MP4, MOV (50MB)
               </p>
             </div>
           ) : showMusicPicker ? (
@@ -191,11 +197,19 @@ const CreateStoryDialog = ({ open, onOpenChange, userId, onStoryCreated }: Creat
           ) : (
             <div className="space-y-3">
               <div className="relative">
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="w-full rounded-lg max-h-96 object-contain bg-secondary"
-                />
+                {file?.type.startsWith('video/') ? (
+                  <video
+                    src={preview || ""}
+                    controls
+                    className="w-full rounded-lg max-h-96"
+                  />
+                ) : (
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className="w-full rounded-lg max-h-96 object-contain bg-secondary"
+                  />
+                )}
                 <Button
                   variant="secondary"
                   size="icon"
@@ -233,7 +247,7 @@ const CreateStoryDialog = ({ open, onOpenChange, userId, onStoryCreated }: Creat
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             className="hidden"
             onChange={handleFileSelect}
           />
