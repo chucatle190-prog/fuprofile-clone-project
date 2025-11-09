@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import Navbar from "@/components/Navbar";
@@ -50,8 +50,10 @@ interface Stats {
 }
 
 const Profile = () => {
+  const { username } = useParams<{ username: string }>();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [stats, setStats] = useState<Stats>({
     posts: 0,
@@ -74,7 +76,12 @@ const Profile = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        fetchProfile(session.user.id);
+        if (username) {
+          fetchProfileByUsername(username, session.user.id);
+        } else {
+          fetchProfile(session.user.id);
+          setIsOwnProfile(true);
+        }
       }
     });
 
@@ -83,12 +90,44 @@ const Profile = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        fetchProfile(session.user.id);
+        if (username) {
+          fetchProfileByUsername(username, session.user.id);
+        } else {
+          fetchProfile(session.user.id);
+          setIsOwnProfile(true);
+        }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, username]);
+
+  const fetchProfileByUsername = async (username: string, currentUserId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("username", username)
+        .single();
+
+      if (error) throw error;
+      
+      setProfile(data);
+      setIsOwnProfile(data.id === currentUserId);
+
+      await fetchUserPosts(data.id);
+      await fetchStats(data.id);
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy người dùng",
+        variant: "destructive",
+      });
+      navigate("/feed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -312,16 +351,18 @@ const Profile = () => {
                 className="hidden"
                 onChange={handleCoverUpload}
               />
-              <Button
-                size="sm"
-                variant="secondary"
-                className="absolute bottom-4 right-4"
-                onClick={() => coverInputRef.current?.click()}
-                disabled={uploading}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                {uploading ? "Đang tải..." : "Chỉnh sửa ảnh bìa"}
-              </Button>
+              {isOwnProfile && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="absolute bottom-4 right-4"
+                  onClick={() => coverInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploading ? "Đang tải..." : "Chỉnh sửa ảnh bìa"}
+                </Button>
+              )}
             </div>
             
             <div className="px-6 -mt-16 relative">
@@ -341,15 +382,17 @@ const Profile = () => {
                       className="hidden"
                       onChange={handleAvatarUpload}
                     />
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      className="absolute bottom-0 right-0 rounded-full h-10 w-10"
-                      onClick={() => avatarInputRef.current?.click()}
-                      disabled={uploading}
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
+                    {isOwnProfile && (
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="absolute bottom-0 right-0 rounded-full h-10 w-10"
+                        onClick={() => avatarInputRef.current?.click()}
+                        disabled={uploading}
+                      >
+                        <Camera className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                   <div className="text-center md:text-left mb-4">
                     <h1 className="text-3xl font-bold">{profile?.full_name || profile?.username}</h1>
@@ -436,18 +479,18 @@ const Profile = () => {
                 {profile && (
                   <AboutSection 
                     profile={profile} 
-                    isOwnProfile={true}
-                    onUpdate={() => fetchProfile(user!.id)}
+                    isOwnProfile={isOwnProfile}
+                    onUpdate={() => profile && fetchProfile(profile.id)}
                   />
                 )}
               </TabsContent>
               
               <TabsContent value="photos" className="mt-4">
-                {user && <PhotosGrid userId={user.id} />}
+                {profile && <PhotosGrid userId={profile.id} />}
               </TabsContent>
               
               <TabsContent value="friends" className="mt-4">
-                {user && <FriendsList userId={user.id} />}
+                {profile && <FriendsList userId={profile.id} />}
               </TabsContent>
             </Tabs>
           </div>

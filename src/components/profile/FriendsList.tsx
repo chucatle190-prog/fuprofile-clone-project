@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,6 +17,7 @@ interface FriendsListProps {
 }
 
 const FriendsList = ({ userId }: FriendsListProps) => {
+  const navigate = useNavigate();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -69,7 +71,11 @@ const FriendsList = ({ userId }: FriendsListProps) => {
   return (
     <div className="grid grid-cols-3 gap-4">
       {friends.map((friend) => (
-        <Card key={friend.id} className="p-4 text-center hover:bg-accent/10 transition-colors cursor-pointer">
+        <Card 
+          key={friend.id} 
+          className="p-4 text-center hover:bg-accent/10 transition-colors cursor-pointer"
+          onClick={() => navigate(`/profile/${friend.username}`)}
+        >
           <Avatar className="h-20 w-20 mx-auto mb-2">
             <AvatarImage src={friend.avatar_url || ""} />
             <AvatarFallback className="bg-primary text-primary-foreground">

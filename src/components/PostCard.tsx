@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "./ui/card";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -47,6 +48,7 @@ interface PostCardProps {
 }
 
 const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
+  const navigate = useNavigate();
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState<Comment[]>([]);
@@ -193,7 +195,10 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
       <CardContent className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
+          <div 
+            className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => navigate(`/profile/${post.profiles.username}`)}
+          >
             <Avatar>
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {post.profiles.username[0].toUpperCase()}
@@ -288,14 +293,20 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
           <div className="mt-4 pt-4 border-t border-border space-y-3">
             {comments.map((comment) => (
               <div key={comment.id} className="flex gap-2">
-                <Avatar className="h-8 w-8 flex-shrink-0">
+                <Avatar 
+                  className="h-8 w-8 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => navigate(`/profile/${comment.profiles.username}`)}
+                >
                   <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                     {comment.profiles.username[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <div className="bg-secondary/50 rounded-2xl px-3 py-2">
-                    <p className="text-sm font-semibold">
+                    <p 
+                      className="text-sm font-semibold cursor-pointer hover:underline"
+                      onClick={() => navigate(`/profile/${comment.profiles.username}`)}
+                    >
                       {comment.profiles.full_name || comment.profiles.username}
                     </p>
                     <p className="text-sm">{comment.content}</p>
