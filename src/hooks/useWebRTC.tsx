@@ -90,10 +90,14 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
       return signalingChannel.current;
     }
 
+    // Guard against double init (React StrictMode)
+    signalingInitRef.current = true;
     console.log('Setting up signaling channel for conversation:', conversationId);
 
-    // reset ready flag before subscribing
-    signalingReadyRef.current = false;
+    // Only reset ready flag if we don't already have a channel
+    if (!signalingChannel.current) {
+      signalingReadyRef.current = false;
+    }
 
     const channel = supabase
       .channel(`call:${conversationId}`, {
@@ -144,7 +148,6 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
       });
 
     signalingChannel.current = channel;
-    signalingInitRef.current = true;
     return channel;
   }, [conversationId, currentUserId, startRingtone]);
 
@@ -356,14 +359,15 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
   };
 
   useEffect(() => {
-    signalingReadyRef.current = false;
     const channel = setupSignaling();
 
     return () => {
       try { supabase.removeChannel(channel); } catch {}
       signalingChannel.current = null;
+      signalingInitRef.current = false;
+      signalingReadyRef.current = false;
     };
-  }, [conversationId, currentUserId]);
+  }, [conversationId, currentUserId, setupSignaling]);
 
   return {
     callState,
