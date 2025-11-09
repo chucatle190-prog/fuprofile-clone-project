@@ -13,6 +13,7 @@ import Friends from "./pages/Friends";
 import Groups from "./pages/Groups";
 import Settings from "./pages/Settings";
 import Marketplace from "./pages/Marketplace";
+import MarketplaceItemDetail from "./pages/MarketplaceItemDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/friends" element={<Friends />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/marketplace/:id" element={<MarketplaceItemDetail />} />
           <Route path="/settings" element={<Settings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +42,7 @@ interface MarketplaceItemCardProps {
 
 const MarketplaceItemCard = ({ item, currentUserId, onUpdate }: MarketplaceItemCardProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleDelete = async () => {
     if (currentUserId !== item.user_id) return;
@@ -72,7 +74,10 @@ const MarketplaceItemCard = ({ item, currentUserId, onUpdate }: MarketplaceItemC
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+    <Card 
+      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+      onClick={() => navigate(`/marketplace/${item.id}`)}
+    >
       <CardContent className="p-0">
         {/* Image */}
         {item.image_url ? (
@@ -102,13 +107,13 @@ const MarketplaceItemCard = ({ item, currentUserId, onUpdate }: MarketplaceItemC
             </div>
             {currentUserId === item.user_id && (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete(); }} className="text-destructive">
                     <Trash2 className="h-4 w-4 mr-2" />
                     Xóa
                   </DropdownMenuItem>
