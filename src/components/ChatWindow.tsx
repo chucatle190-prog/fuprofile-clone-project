@@ -7,6 +7,8 @@ import { Send, Phone, Video, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import MessageBubble from "./MessageBubble";
+import CallDialog from "./CallDialog";
+import { useWebRTC } from "@/hooks/useWebRTC";
 
 interface Message {
   id: string;
@@ -32,6 +34,22 @@ const ChatWindow = ({ conversationId, currentUserId, otherUser }: ChatWindowProp
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const {
+    callState,
+    callType,
+    localStream,
+    remoteStream,
+    startCall,
+    acceptCall,
+    rejectCall,
+    endCall,
+    toggleAudio,
+    toggleVideo,
+  } = useWebRTC({
+    conversationId,
+    currentUserId,
+  });
 
   useEffect(() => {
     fetchMessages();
@@ -134,10 +152,20 @@ const ChatWindow = ({ conversationId, currentUserId, otherUser }: ChatWindowProp
         </div>
         
         <div className="flex gap-2">
-          <Button variant="ghost" size="icon">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => startCall('audio')}
+            disabled={callState !== 'idle'}
+          >
             <Phone className="h-5 w-5 text-primary" />
           </Button>
-          <Button variant="ghost" size="icon">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => startCall('video')}
+            disabled={callState !== 'idle'}
+          >
             <Video className="h-5 w-5 text-primary" />
           </Button>
           <Button variant="ghost" size="icon">
@@ -180,6 +208,21 @@ const ChatWindow = ({ conversationId, currentUserId, otherUser }: ChatWindowProp
           </Button>
         </form>
       </div>
+
+      {/* Call Dialog */}
+      <CallDialog
+        open={callState !== 'idle'}
+        callState={callState}
+        callType={callType}
+        localStream={localStream}
+        remoteStream={remoteStream}
+        otherUser={otherUser}
+        onAccept={acceptCall}
+        onReject={rejectCall}
+        onEnd={endCall}
+        onToggleAudio={toggleAudio}
+        onToggleVideo={toggleVideo}
+      />
     </div>
   );
 };
