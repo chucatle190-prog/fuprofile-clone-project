@@ -19,6 +19,7 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
   
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const signalingChannel = useRef<any>(null);
+  const signalingReadyRef = useRef(false);
   const { toast } = useToast();
 
   const configuration: RTCConfiguration = {
@@ -73,6 +74,7 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
       })
       .subscribe((status) => {
         console.log('Signaling channel status:', status);
+        if (status === 'SUBSCRIBED') signalingReadyRef.current = true;
       });
   }, [conversationId, currentUserId]);
 
@@ -107,9 +109,22 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
     return pc;
   }, [currentUserId]);
 
+  const ensureSignalingReady = async () => {
+    if (signalingReadyRef.current) return;
+    console.log('Waiting for signaling channel to be ready...');
+    const start = Date.now();
+    while (!signalingReadyRef.current && Date.now() - start < 5000) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    if (!signalingReadyRef.current) {
+      throw new Error('Kênh tín hiệu chưa sẵn sàng. Vui lòng thử lại sau.');
+    }
+  };
+
   const startCall = async (type: CallType) => {
     try {
       console.log('Starting call, type:', type);
+      await ensureSignalingReady();
       setCallType(type);
       setCallState('calling');
 
@@ -157,6 +172,7 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
   const acceptCall = async () => {
     try {
       console.log('Accepting call...');
+      await ensureSignalingReady();
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: callType === 'video',
