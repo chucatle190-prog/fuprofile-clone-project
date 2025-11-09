@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { UserPlus, UserCheck, X, Users, Search } from "lucide-react";
+import { UserPlus, UserCheck, X, Users, Search, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Profile {
@@ -62,6 +62,7 @@ const Friends = () => {
   }, [navigate]);
 
   const fetchFriendships = async (userId: string) => {
+    // Get friend requests (pending, sent TO me)
     const { data: requests } = await supabase
       .from("friendships")
       .select(`
@@ -71,7 +72,8 @@ const Friends = () => {
       .eq("friend_id", userId)
       .eq("status", "pending");
 
-    const { data: accepted } = await supabase
+    // Get accepted friends (both directions)
+    const { data: accepted1 } = await supabase
       .from("friendships")
       .select(`
         *,
@@ -80,8 +82,22 @@ const Friends = () => {
       .eq("user_id", userId)
       .eq("status", "accepted");
 
+    const { data: accepted2 } = await supabase
+      .from("friendships")
+      .select(`
+        *,
+        profiles!friendships_user_id_fkey (id, username, full_name, avatar_url, bio)
+      `)
+      .eq("friend_id", userId)
+      .eq("status", "accepted");
+
     if (requests) setFriendRequests(requests as any);
-    if (accepted) setFriends(accepted as any);
+    
+    const allFriends = [
+      ...(accepted1 || []).map((f: any) => ({ ...f, other_user: f.profiles })),
+      ...(accepted2 || []).map((f: any) => ({ ...f, other_user: f.profiles })),
+    ];
+    setFriends(allFriends as any);
 
     await fetchSuggestions(userId);
   };
@@ -166,10 +182,75 @@ const Friends = () => {
     fetchFriendships(user!.id);
   };
 
-  const filteredFriends = friends.filter((friend) =>
-    friend.profiles.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    friend.profiles.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredFriends = friends.filter((friend) => {
+    const profile = (friend as any).other_user || friend.profiles;
+    return (
+      profile.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      profile.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
+  const handleMessageFriend = async (friendId: string) => {
+    if (!user) return;
+
+    try {
+      // Check if conversation exists
+      const { data: existingConvs } = await supabase
+        .from("conversation_participants")
+        .select("conversation_id")
+        .eq("user_id", user.id);
+
+      let conversationId = null;
+
+      if (existingConvs) {
+        for (const conv of existingConvs) {
+          const { data: participants } = await supabase
+            .from("conversation_participants")
+            .select("user_id")
+            .eq("conversation_id", conv.conversation_id);
+
+          if (
+            participants &&
+            participants.length === 2 &&
+            participants.some((p) => p.user_id === friendId)
+          ) {
+            conversationId = conv.conversation_id;
+            break;
+          }
+        }
+      }
+
+      // Create new conversation if doesn't exist
+      if (!conversationId) {
+        const { data: newConv, error: convError } = await supabase
+          .from("conversations")
+          .insert({ type: "direct" })
+          .select()
+          .single();
+
+        if (convError) throw convError;
+
+        conversationId = newConv.id;
+
+        const { error: participantsError } = await supabase
+          .from("conversation_participants")
+          .insert([
+            { conversation_id: conversationId, user_id: user.id },
+            { conversation_id: conversationId, user_id: friendId },
+          ]);
+
+        if (participantsError) throw participantsError;
+      }
+
+      navigate("/messages", { state: { conversationId } });
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -222,31 +303,42 @@ const Friends = () => {
                     </p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {filteredFriends.map((friend) => (
-                        <Card key={friend.id} className="p-4 hover:shadow-md transition-shadow">
-                          <div className="flex items-start gap-3">
-                            <Avatar className="h-16 w-16">
-                              <AvatarImage src={friend.profiles.avatar_url || ""} />
-                              <AvatarFallback className="bg-primary text-primary-foreground text-lg">
-                                {friend.profiles.username[0].toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold truncate">
-                                {friend.profiles.full_name || friend.profiles.username}
-                              </p>
-                              <p className="text-sm text-muted-foreground truncate">
-                                @{friend.profiles.username}
-                              </p>
-                              {friend.profiles.bio && (
-                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                  {friend.profiles.bio}
+                      {filteredFriends.map((friend) => {
+                        const profile = (friend as any).other_user || friend.profiles;
+                        return (
+                          <Card key={friend.id} className="p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start gap-3">
+                              <Avatar className="h-16 w-16">
+                                <AvatarImage src={profile.avatar_url || ""} />
+                                <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+                                  {profile.username[0].toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold truncate">
+                                  {profile.full_name || profile.username}
                                 </p>
-                              )}
+                                <p className="text-sm text-muted-foreground truncate">
+                                  @{profile.username}
+                                </p>
+                                {profile.bio && (
+                                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                    {profile.bio}
+                                  </p>
+                                )}
+                                <Button
+                                  size="sm"
+                                  className="mt-2 w-full"
+                                  onClick={() => handleMessageFriend(profile.id)}
+                                >
+                                  <MessageCircle className="h-4 w-4 mr-1" />
+                                  Nhắn tin
+                                </Button>
+                              </div>
                             </div>
-                          </div>
-                        </Card>
-                      ))}
+                          </Card>
+                        );
+                      })}
                     </div>
                   )}
                 </TabsContent>

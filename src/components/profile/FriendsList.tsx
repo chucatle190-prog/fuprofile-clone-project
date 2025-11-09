@@ -24,16 +24,28 @@ const FriendsList = ({ userId }: FriendsListProps) => {
   }, [userId]);
 
   const fetchFriends = async () => {
-    const { data } = await supabase
+    // Get friends where I'm user_id
+    const { data: friends1 } = await supabase
       .from("friendships")
       .select("profiles!friendships_friend_id_fkey(id, username, full_name, avatar_url)")
       .eq("user_id", userId)
       .eq("status", "accepted")
       .limit(9);
 
-    if (data) {
-      setFriends(data.map(f => f.profiles).filter(Boolean) as Friend[]);
-    }
+    // Get friends where I'm friend_id
+    const { data: friends2 } = await supabase
+      .from("friendships")
+      .select("profiles!friendships_user_id_fkey(id, username, full_name, avatar_url)")
+      .eq("friend_id", userId)
+      .eq("status", "accepted")
+      .limit(9);
+
+    const allFriends = [
+      ...(friends1 || []).map((f: any) => f.profiles),
+      ...(friends2 || []).map((f: any) => f.profiles),
+    ].filter(Boolean) as Friend[];
+
+    setFriends(allFriends.slice(0, 9));
     setLoading(false);
   };
 
