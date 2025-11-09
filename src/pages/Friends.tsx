@@ -190,7 +190,7 @@ const Friends = () => {
     );
   });
 
-  const handleMessageFriend = async (friendId: string) => {
+  const handleMessageFriend = async (friendId: string, friendProfile: any) => {
     if (!user) return;
 
     try {
@@ -242,7 +242,14 @@ const Friends = () => {
         if (participantsError) throw participantsError;
       }
 
-      navigate("/messages", { state: { conversationId } });
+      navigate("/messages", { state: { 
+        conversationId,
+        otherUser: {
+          username: friendProfile.username,
+          full_name: friendProfile.full_name,
+          avatar_url: friendProfile.avatar_url,
+        }
+      } });
     } catch (error: any) {
       toast({
         title: "Lỗi",
@@ -329,7 +336,7 @@ const Friends = () => {
                                 <Button
                                   size="sm"
                                   className="mt-2 w-full"
-                                  onClick={() => handleMessageFriend(profile.id)}
+                                  onClick={() => handleMessageFriend(profile.id, profile)}
                                 >
                                   <MessageCircle className="h-4 w-4 mr-1" />
                                   Nhắn tin

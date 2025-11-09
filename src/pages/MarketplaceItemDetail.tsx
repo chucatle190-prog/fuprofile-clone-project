@@ -164,7 +164,14 @@ const MarketplaceItemDetail = () => {
         if (participantsError) throw participantsError;
       }
 
-      navigate("/messages", { state: { conversationId } });
+      navigate("/messages", { state: { 
+        conversationId,
+        otherUser: {
+          username: item.profiles.username,
+          full_name: item.profiles.full_name,
+          avatar_url: item.profiles.avatar_url,
+        }
+      } });
       
       toast({
         title: "Thành công",

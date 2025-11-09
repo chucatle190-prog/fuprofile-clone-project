@@ -34,11 +34,13 @@ const Messages = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const [passedOtherUser, setPassedOtherUser] = useState<any>(null);
 
-  // Pre-select conversation from navigation state (works on mobile too)
+  // Pre-select conversation and cache other user from navigation state (works on mobile too)
   useEffect(() => {
-    const passed = (location as any).state?.conversationId;
-    if (passed) setSelectedConversationId(passed);
+    const s = (location as any).state;
+    if (s?.conversationId) setSelectedConversationId(s.conversationId);
+    if (s?.otherUser) setPassedOtherUser(s.otherUser);
   }, [location]);
 
   // Realtime subscription for new messages and conversations
@@ -190,7 +192,7 @@ const Messages = () => {
             </div>
             
             {/* Mobile chat view */}
-            {selectedConversationId && selectedConversation && user && (
+            {selectedConversationId && user && (
               <div className="flex-1 flex md:hidden flex-col">
                 <div className="p-4 border-b border-border">
                   <Button
@@ -206,18 +208,18 @@ const Messages = () => {
                 <ChatWindow
                   conversationId={selectedConversationId}
                   currentUserId={user.id}
-                  otherUser={selectedConversation.other_user || null}
+                  otherUser={selectedConversation?.other_user || passedOtherUser || null}
                 />
               </div>
             )}
             
             {/* Desktop chat view */}
             <div className="flex-1 hidden md:flex flex-col">
-              {selectedConversationId && selectedConversation && user ? (
+              {selectedConversationId && user ? (
                 <ChatWindow
                   conversationId={selectedConversationId}
                   currentUserId={user.id}
-                  otherUser={selectedConversation.other_user || null}
+                  otherUser={selectedConversation?.other_user || passedOtherUser || null}
                 />
               ) : (
                 <div className="flex-1 flex items-center justify-center text-muted-foreground">
