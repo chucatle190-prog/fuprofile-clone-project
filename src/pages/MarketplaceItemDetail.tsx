@@ -113,59 +113,15 @@ const MarketplaceItemDetail = () => {
     if (!user || !item) return;
 
     try {
-      // Check if conversation already exists
-      const { data: existingConversations } = await supabase
-        .from("conversation_participants")
-        .select("conversation_id")
-        .eq("user_id", user.id);
+      const { data: convId, error } = await supabase.rpc('create_direct_conversation', {
+        other_user_id: item.user_id,
+      });
 
-      let conversationId = null;
-
-      if (existingConversations) {
-        for (const conv of existingConversations) {
-          const { data: participants } = await supabase
-            .from("conversation_participants")
-            .select("user_id")
-            .eq("conversation_id", conv.conversation_id);
-
-          if (
-            participants &&
-            participants.length === 2 &&
-            participants.some((p) => p.user_id === item.user_id)
-          ) {
-            conversationId = conv.conversation_id;
-            break;
-          }
-        }
-      }
-
-      // Create new conversation if doesn't exist
-      if (!conversationId) {
-        const { data: newConv, error: convError } = await supabase
-          .from("conversations")
-          .insert({
-            type: "direct",
-          })
-          .select()
-          .single();
-
-        if (convError) throw convError;
-
-        conversationId = newConv.id;
-
-        // Add participants
-        const { error: participantsError } = await supabase
-          .from("conversation_participants")
-          .insert([
-            { conversation_id: conversationId, user_id: user.id },
-            { conversation_id: conversationId, user_id: item.user_id },
-          ]);
-
-        if (participantsError) throw participantsError;
-      }
+      if (error) throw error;
+      if (!convId) throw new Error('Không thể tạo cuộc trò chuyện');
 
       navigate("/messages", { state: { 
-        conversationId,
+        conversationId: convId as string,
         otherUser: {
           username: item.profiles.username,
           full_name: item.profiles.full_name,
