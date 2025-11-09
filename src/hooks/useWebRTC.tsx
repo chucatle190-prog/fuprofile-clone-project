@@ -23,6 +23,7 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
   const endCallRef = useRef<() => void>(() => {});
   const ringtoneIntervalRef = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const signalingInitRef = useRef(false);
   const { toast } = useToast();
 
   // Create ringtone function
@@ -84,9 +85,17 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
   };
 
   const setupSignaling = useCallback(() => {
+    if (signalingInitRef.current && signalingChannel.current) {
+      console.log('Signaling already initialized');
+      return signalingChannel.current;
+    }
+
     console.log('Setting up signaling channel for conversation:', conversationId);
-    
-    signalingChannel.current = supabase
+
+    // reset ready flag before subscribing
+    signalingReadyRef.current = false;
+
+    const channel = supabase
       .channel(`call:${conversationId}`, {
         config: {
           broadcast: { self: false },
@@ -134,8 +143,10 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
         if (status === 'SUBSCRIBED') signalingReadyRef.current = true;
       });
 
-    return signalingChannel.current;
-  }, [conversationId, currentUserId]);
+    signalingChannel.current = channel;
+    signalingInitRef.current = true;
+    return channel;
+  }, [conversationId, currentUserId, startRingtone]);
 
   const createPeerConnection = useCallback(() => {
     const pc = new RTCPeerConnection(configuration);
@@ -169,6 +180,9 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
   }, [currentUserId]);
 
   const ensureSignalingReady = async () => {
+    if (!signalingChannel.current) {
+      setupSignaling();
+    }
     if (signalingReadyRef.current) return;
     console.log('Waiting for signaling channel to be ready...');
     const start = Date.now();
