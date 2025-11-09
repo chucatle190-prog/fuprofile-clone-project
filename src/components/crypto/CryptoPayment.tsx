@@ -26,7 +26,7 @@ const CryptoPayment = ({
 }: CryptoPaymentProps) => {
   const { account, usdtBalance, isCorrectNetwork, sendUSDT } = useMetaMask();
   const [sellerAddress, setSellerAddress] = useState(sellerWalletAddress || "");
-  const [amount, setAmount] = useState(itemPrice.toString());
+  const [amount, setAmount] = useState(() => ((itemPrice / 25000).toFixed(2)));
   const [isPaying, setIsPaying] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -206,6 +206,9 @@ const CryptoPayment = ({
             />
             <p className="text-xs text-muted-foreground">
               Số dư: {parseFloat(usdtBalance).toFixed(2)} USDT
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Đã ước tính từ giá VND với tỷ giá ~25,000 VND = 1 USDT. Bạn có thể chỉnh sửa số tiền.
             </p>
           </div>
         </div>
