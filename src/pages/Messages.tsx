@@ -41,6 +41,49 @@ const Messages = () => {
     if (passed) setSelectedConversationId(passed);
   }, [location]);
 
+  // Realtime subscription for new messages and conversations
+  useEffect(() => {
+    if (!user) return;
+
+    const messagesChannel = supabase
+      .channel('messages-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages'
+        },
+        () => {
+          // Refresh conversations when new message arrives
+          fetchConversations(user.id);
+        }
+      )
+      .subscribe();
+
+    const participantsChannel = supabase
+      .channel('participants-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'conversation_participants',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          // Refresh conversations when user is added to new conversation
+          fetchConversations(user.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(participantsChannel);
+    };
+  }, [user]);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
@@ -125,12 +168,6 @@ const Messages = () => {
     );
 
     setConversations(conversationsWithDetails);
-    
-    // Auto-select conversation if passed from navigation
-    const passedConversationId = location.state?.conversationId;
-    if (passedConversationId && conversationsWithDetails.some(c => c.id === passedConversationId)) {
-      setSelectedConversationId(passedConversationId);
-    }
   };
 
   const selectedConversation = conversations.find((c) => c.id === selectedConversationId);
