@@ -106,6 +106,53 @@ export type Database = {
         }
         Relationships: []
       }
+      crypto_transactions: {
+        Row: {
+          amount: number
+          buyer_id: string
+          created_at: string
+          id: string
+          marketplace_item_id: string
+          network: string
+          seller_id: string
+          status: string
+          token_symbol: string
+          transaction_hash: string
+        }
+        Insert: {
+          amount: number
+          buyer_id: string
+          created_at?: string
+          id?: string
+          marketplace_item_id: string
+          network?: string
+          seller_id: string
+          status?: string
+          token_symbol: string
+          transaction_hash: string
+        }
+        Update: {
+          amount?: number
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          marketplace_item_id?: string
+          network?: string
+          seller_id?: string
+          status?: string
+          token_symbol?: string
+          transaction_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crypto_transactions_marketplace_item_id_fkey"
+            columns: ["marketplace_item_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friendships: {
         Row: {
           created_at: string | null
@@ -402,6 +449,7 @@ export type Database = {
           relationship: string | null
           updated_at: string | null
           username: string
+          wallet_address: string | null
           work: string | null
         }
         Insert: {
@@ -417,6 +465,7 @@ export type Database = {
           relationship?: string | null
           updated_at?: string | null
           username: string
+          wallet_address?: string | null
           work?: string | null
         }
         Update: {
@@ -432,6 +481,7 @@ export type Database = {
           relationship?: string | null
           updated_at?: string | null
           username?: string
+          wallet_address?: string | null
           work?: string | null
         }
         Relationships: []

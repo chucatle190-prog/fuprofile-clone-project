@@ -9,16 +9,20 @@ import MobileNav from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, MapPin, MessageCircle, Trash2, AlertCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, MapPin, MessageCircle, Trash2, AlertCircle, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
+import MetaMaskConnect from "@/components/crypto/MetaMaskConnect";
+import CryptoPayment from "@/components/crypto/CryptoPayment";
 
 interface Profile {
   id: string;
   username: string;
   full_name: string | null;
   avatar_url: string | null;
+  wallet_address: string | null;
 }
 
 interface MarketplaceItem {
@@ -82,7 +86,7 @@ const MarketplaceItemDetail = () => {
       if (itemData) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("id, username, full_name, avatar_url")
+          .select("id, username, full_name, avatar_url, wallet_address")
           .eq("id", itemData.user_id)
           .single();
 
@@ -294,14 +298,42 @@ const MarketplaceItemDetail = () => {
                   </p>
 
                   {user?.id !== item.user_id ? (
-                    <Button
-                      onClick={handleContactSeller}
-                      className="w-full gap-2"
-                      size="lg"
-                    >
-                      <MessageCircle className="h-5 w-5" />
-                      Nhắn tin người bán
-                    </Button>
+                    <Tabs defaultValue="message" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="message">
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Nhắn tin
+                        </TabsTrigger>
+                        <TabsTrigger value="crypto">
+                          <Wallet className="h-4 w-4 mr-2" />
+                          Thanh toán Crypto
+                        </TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="message" className="mt-4">
+                        <Button
+                          onClick={handleContactSeller}
+                          className="w-full gap-2"
+                          size="lg"
+                        >
+                          <MessageCircle className="h-5 w-5" />
+                          Nhắn tin người bán
+                        </Button>
+                      </TabsContent>
+
+                      <TabsContent value="crypto" className="mt-4 space-y-4">
+                        <MetaMaskConnect />
+                        <CryptoPayment
+                          itemId={item.id}
+                          itemPrice={item.price}
+                          sellerWalletAddress={item.profiles.wallet_address}
+                          sellerId={item.user_id}
+                          onPaymentSuccess={() => {
+                            fetchItem();
+                          }}
+                        />
+                      </TabsContent>
+                    </Tabs>
                   ) : (
                     <Button
                       onClick={handleDelete}

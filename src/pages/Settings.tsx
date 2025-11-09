@@ -34,6 +34,7 @@ interface Profile {
   full_name: string;
   bio: string;
   avatar_url: string;
+  wallet_address: string | null;
 }
 
 const Settings = () => {
@@ -49,6 +50,7 @@ const Settings = () => {
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [email, setEmail] = useState("");
+  const [walletAddress, setWalletAddress] = useState("");
 
   // Password form state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -97,6 +99,7 @@ const Settings = () => {
       setFullName(data.full_name || "");
       setUsername(data.username || "");
       setBio(data.bio || "");
+      setWalletAddress(data.wallet_address || "");
     }
   };
 
@@ -172,6 +175,7 @@ const Settings = () => {
         full_name: fullName,
         username: username,
         bio: bio,
+        wallet_address: walletAddress || null,
       })
       .eq("id", user.id);
 
@@ -337,6 +341,18 @@ const Settings = () => {
                         placeholder="Viết vài dòng về bản thân..."
                         rows={4}
                       />
+                    </div>
+                    <div>
+                      <Label htmlFor="wallet">Địa chỉ ví (cho Marketplace)</Label>
+                      <Input
+                        id="wallet"
+                        value={walletAddress}
+                        onChange={(e) => setWalletAddress(e.target.value)}
+                        placeholder="0x..."
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Địa chỉ ví BSC Testnet để nhận thanh toán USDT
+                      </p>
                     </div>
                     <Button onClick={handleUpdateProfile} disabled={loading} className="w-full">
                       {loading ? "Đang lưu..." : "Lưu thay đổi"}
