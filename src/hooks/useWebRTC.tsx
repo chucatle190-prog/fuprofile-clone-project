@@ -20,6 +20,7 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const signalingChannel = useRef<any>(null);
   const signalingReadyRef = useRef(false);
+  const endCallRef = useRef<() => void>(() => {});
   const { toast } = useToast();
 
   const configuration: RTCConfiguration = {
@@ -70,12 +71,14 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
       .on('broadcast', { event: 'end-call' }, ({ payload }) => {
         console.log('Received end-call:', payload);
         if (payload.from === currentUserId) return;
-        endCall();
+        endCallRef.current();
       })
       .subscribe((status) => {
         console.log('Signaling channel status:', status);
         if (status === 'SUBSCRIBED') signalingReadyRef.current = true;
       });
+
+    return signalingChannel.current;
   }, [conversationId, currentUserId]);
 
   const createPeerConnection = useCallback(() => {
@@ -113,7 +116,7 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
     if (signalingReadyRef.current) return;
     console.log('Waiting for signaling channel to be ready...');
     const start = Date.now();
-    while (!signalingReadyRef.current && Date.now() - start < 5000) {
+    while (!signalingReadyRef.current && Date.now() - start < 10000) {
       await new Promise((r) => setTimeout(r, 50));
     }
     if (!signalingReadyRef.current) {
@@ -248,6 +251,10 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
     onCallEnd?.();
   }, [localStream, remoteStream, onCallEnd]);
 
+  useEffect(() => {
+    endCallRef.current = endCall;
+  }, [endCall]);
+
   const toggleAudio = () => {
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0];
@@ -267,13 +274,14 @@ export const useWebRTC = ({ conversationId, currentUserId, onCallEnd }: UseWebRT
   };
 
   useEffect(() => {
-    setupSignaling();
+    signalingReadyRef.current = false;
+    const channel = setupSignaling();
 
     return () => {
-      endCall();
-      signalingChannel.current?.unsubscribe();
+      try { supabase.removeChannel(channel); } catch {}
+      signalingChannel.current = null;
     };
-  }, [setupSignaling, endCall]);
+  }, [conversationId, currentUserId]);
 
   return {
     callState,
