@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Trophy, Clock, RefreshCw } from "lucide-react";
+import { Trophy, Clock, RefreshCw, X } from "lucide-react";
 import fairy1 from "@/assets/game/fairy1.jpg";
 import fairy2 from "@/assets/game/fairy2.jpg";
 import fairy3 from "@/assets/game/fairy3.jpg";
@@ -207,6 +207,18 @@ export default function MemoryMatch({ groupId }: MemoryMatchProps) {
     }
   };
 
+  const handleExit = () => {
+    if (isPlaying && confirm("Bạn có chắc muốn thoát game? Tiến trình sẽ bị mất.")) {
+      setIsPlaying(false);
+      setCards([]);
+      setFlippedIndices([]);
+      setMatchedPairs(0);
+      setTimeLeft(level.time);
+    } else if (!isPlaying) {
+      setCards([]);
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -222,19 +234,31 @@ export default function MemoryMatch({ groupId }: MemoryMatchProps) {
   };
 
   const getCardSize = () => {
-    if (level.gridSize <= 6) return "h-20 w-20";
-    if (level.gridSize <= 12) return "h-12 w-12 md:h-16 md:w-16";
-    if (level.gridSize <= 24) return "h-8 w-8 md:h-10 md:w-10";
-    if (level.gridSize <= 48) return "h-6 w-6 md:h-8 md:w-8";
-    return "h-4 w-4 md:h-6 md:w-6";
+    if (level.gridSize <= 6) return "h-24 w-24 sm:h-28 sm:w-28";
+    if (level.gridSize <= 12) return "h-16 w-16 sm:h-20 sm:w-20";
+    if (level.gridSize <= 24) return "h-10 w-10 sm:h-12 sm:w-12";
+    if (level.gridSize <= 48) return "h-8 w-8 sm:h-10 sm:w-10";
+    return "h-6 w-6 sm:h-8 sm:w-8";
   };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>🧠 Ghép hình giống nhau</span>
-          <Trophy className="h-5 w-5 text-yellow-500" />
+          <div className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-yellow-500" />
+            <span>🧠 Ghép hình giống nhau</span>
+          </div>
+          {cards.length > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleExit}
+              className="h-8 w-8"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -257,21 +281,21 @@ export default function MemoryMatch({ groupId }: MemoryMatchProps) {
         </div>
 
         {/* Game Info */}
-        <div className="flex items-center justify-between bg-muted p-4 rounded-lg">
-          <div>
-            <p className="text-sm text-muted-foreground">Màn chơi</p>
-            <p className="font-bold">{level.label}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-muted p-3 sm:p-4 rounded-lg">
+          <div className="text-center sm:text-left">
+            <p className="text-xs sm:text-sm text-muted-foreground">Màn chơi</p>
+            <p className="font-bold text-sm sm:text-base">{level.label}</p>
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Thời gian</p>
-            <p className="font-bold flex items-center gap-1">
+          <div className="text-center sm:text-left">
+            <p className="text-xs sm:text-sm text-muted-foreground">Thời gian</p>
+            <p className="font-bold text-sm sm:text-base flex items-center gap-1 justify-center sm:justify-start">
               <Clock className="h-4 w-4" />
               {formatTime(timeLeft)}
             </p>
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Tiến độ</p>
-            <p className="font-bold">{matchedPairs}/{totalPairs} cặp</p>
+          <div className="text-center sm:text-left">
+            <p className="text-xs sm:text-sm text-muted-foreground">Tiến độ</p>
+            <p className="font-bold text-sm sm:text-base">{matchedPairs}/{totalPairs} cặp</p>
           </div>
         </div>
 
@@ -285,34 +309,44 @@ export default function MemoryMatch({ groupId }: MemoryMatchProps) {
 
         {/* Game Board */}
         {cards.length > 0 && (
-          <div className="overflow-auto max-h-[600px]">
-            <div className={`grid ${getGridCols()} gap-1 md:gap-2`}>
+          <div className="overflow-auto max-h-[500px] sm:max-h-[600px]">
+            <div className={`grid ${getGridCols()} gap-2 sm:gap-3 justify-items-center`}>
               {cards.map((card, index) => (
                 <button
                   key={card.id}
                   onClick={() => handleCardClick(index)}
                   disabled={!isPlaying || card.isMatched}
-                  className={`${getCardSize()} rounded-lg transition-all duration-300 transform hover:scale-105 disabled:cursor-not-allowed overflow-hidden relative`}
-                  style={{
-                    backgroundColor: "#E5E7EB",
-                    opacity: card.isMatched ? 0.5 : 1,
-                  }}
+                  className={`${getCardSize()} rounded-lg transition-all duration-300 hover:scale-105 disabled:cursor-not-allowed overflow-hidden relative shadow-sm`}
                 >
-                  {(card.isFlipped || card.isMatched) ? (
-                    <img 
-                      src={card.imageUrl} 
-                      alt="Fairy" 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
-                      <span className="text-white text-xs md:text-sm font-bold">✨</span>
+                  {/* Background image - always visible but blurred when not flipped */}
+                  <img 
+                    src={card.imageUrl} 
+                    alt="Fairy" 
+                    className={`w-full h-full object-cover transition-all duration-300 ${
+                      card.isFlipped || card.isMatched ? 'blur-0' : 'blur-md'
+                    }`}
+                    style={{
+                      filter: card.isFlipped || card.isMatched ? 'none' : 'blur(8px) brightness(0.7)',
+                    }}
+                  />
+                  
+                  {/* Overlay for unflipped cards */}
+                  {!card.isFlipped && !card.isMatched && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/80 to-teal-500/80 flex items-center justify-center backdrop-blur-sm">
+                      <span className="text-white text-xl sm:text-2xl font-bold drop-shadow-lg">?</span>
                     </div>
                   )}
+                  
+                  {/* Matched overlay */}
                   {card.isMatched && (
-                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                      <span className="text-white text-xl md:text-3xl">✓</span>
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                      <span className="text-white text-2xl sm:text-4xl drop-shadow-lg">✓</span>
                     </div>
+                  )}
+                  
+                  {/* Border effect for flipped cards */}
+                  {card.isFlipped && !card.isMatched && (
+                    <div className="absolute inset-0 border-2 border-primary rounded-lg pointer-events-none" />
                   )}
                 </button>
               ))}
