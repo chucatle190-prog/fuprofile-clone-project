@@ -188,6 +188,80 @@ const Wallet = () => {
     }
   };
 
+  const withdrawTokens = async () => {
+    if (!user || !wallet?.wallet_address) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng kết nối ví MetaMask trước",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const withdrawAmount = wallet.camly_balance;
+    if (withdrawAmount <= 0) {
+      toast({
+        title: "Thông báo",
+        description: "Không có F.U Token để rút",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      toast({
+        title: "Đang xử lý",
+        description: "Đang gửi giao dịch lên blockchain...",
+      });
+
+      const { data, error } = await supabase.functions.invoke('withdraw-tokens', {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: {
+          amount: withdrawAmount
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Rút token thành công!",
+          description: (
+            <div className="space-y-1">
+              <p>Đã rút {data.amount} F.U Token</p>
+              <a 
+                href={data.explorerUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline block"
+              >
+                Xem giao dịch trên BSCScan →
+              </a>
+            </div>
+          ),
+        });
+        
+        // Refresh wallet data
+        await fetchWallet(user.id);
+      } else {
+        throw new Error(data.error || 'Có lỗi xảy ra');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Lỗi rút token",
+        description: error.message || "Không thể rút token. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Navbar user={user} />
@@ -254,15 +328,7 @@ const Wallet = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
-                    <Button variant="outline" className="flex-col h-auto py-4">
-                      <Send className="h-5 w-5 mb-2" />
-                      <span>Send</span>
-                    </Button>
-                    <Button variant="outline" className="flex-col h-auto py-4">
-                      <Download className="h-5 w-5 mb-2" />
-                      <span>Receive</span>
-                    </Button>
+                  <div className="grid grid-cols-2 gap-3">
                     <Button 
                       variant="outline" 
                       className="flex-col h-auto py-4"
@@ -270,9 +336,28 @@ const Wallet = () => {
                       disabled={loading}
                     >
                       <Gift className="h-5 w-5 mb-2" />
-                      <span>Claim</span>
+                      <span>Claim Reward</span>
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      className="flex-col h-auto py-4 bg-gradient-to-r from-primary to-accent"
+                      onClick={withdrawTokens}
+                      disabled={loading || !wallet.camly_balance || wallet.camly_balance <= 0}
+                    >
+                      <Download className="h-5 w-5 mb-2" />
+                      <span>Rút về ví</span>
                     </Button>
                   </div>
+
+                  {wallet.camly_balance > 0 && (
+                    <div className="p-4 bg-accent/10 border border-accent/20 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-1">Số dư có thể rút</p>
+                      <p className="text-2xl font-bold text-accent">{wallet.camly_balance} F.U Token</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Token sẽ được chuyển từ treasury vào ví MetaMask của bạn
+                      </p>
+                    </div>
+                  )}
 
                   <Button 
                     variant="outline" 
