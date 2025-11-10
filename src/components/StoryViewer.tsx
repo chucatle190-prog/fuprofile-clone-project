@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { X, ChevronLeft, ChevronRight, Trash2, Music, Volume2, VolumeX, Smile, Send } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Trash2, Music, Volume2, VolumeX, Smile, Send, Image, Video } from "lucide-react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,8 +42,12 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
   const [userReaction, setUserReaction] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState("");
   const [showReplyInput, setShowReplyInput] = useState(false);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const currentStory = stories[currentIndex];
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -208,32 +212,89 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
   };
 
   const handleSendReply = async () => {
-    if (!replyMessage.trim() || !currentUserId || !currentStory) return;
+    if ((!replyMessage.trim() && !mediaFile) || !currentUserId || !currentStory) return;
     if (currentStory.user_id === currentUserId) {
       toast.error("Không thể gửi tin nhắn cho chính mình");
       return;
     }
 
+    setUploading(true);
     try {
+      let imageUrl = null;
+      let videoUrl = null;
+
+      // Upload media nếu có
+      if (mediaFile) {
+        const fileExt = mediaFile.name.split('.').pop();
+        const isVideo = mediaFile.type.startsWith('video/');
+        const bucket = isVideo ? 'videos' : 'avatars';
+        const fileName = `${currentUserId}/reply_${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(fileName, mediaFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from(bucket)
+          .getPublicUrl(fileName);
+
+        if (isVideo) {
+          videoUrl = publicUrl;
+        } else {
+          imageUrl = publicUrl;
+        }
+      }
+
       // Tạo hoặc lấy conversation
       const { data: convId, error: convError } = await supabase
         .rpc('create_direct_conversation', { other_user_id: currentStory.user_id });
 
       if (convError) throw convError;
 
-      // Gửi tin nhắn
-      const { error: msgError } = await supabase
-        .from("messages")
-        .insert({
-          conversation_id: convId,
-          sender_id: currentUserId,
-          content: replyMessage,
-        });
+      // Tạo post với media nếu có
+      if (imageUrl || videoUrl) {
+        const { data: post, error: postError } = await supabase
+          .from("posts")
+          .insert({
+            user_id: currentUserId,
+            content: replyMessage.trim() || "Đã trả lời story của bạn",
+            image_url: imageUrl,
+            video_url: videoUrl,
+          })
+          .select()
+          .single();
 
-      if (msgError) throw msgError;
+        if (postError) throw postError;
+
+        // Gửi tin nhắn với link đến post
+        const { error: msgError } = await supabase
+          .from("messages")
+          .insert({
+            conversation_id: convId,
+            sender_id: currentUserId,
+            content: `${replyMessage.trim() || "Đã trả lời story của bạn"}\n[Xem media](${window.location.origin}/feed)`,
+          });
+
+        if (msgError) throw msgError;
+      } else {
+        // Gửi tin nhắn text thôi
+        const { error: msgError } = await supabase
+          .from("messages")
+          .insert({
+            conversation_id: convId,
+            sender_id: currentUserId,
+            content: replyMessage,
+          });
+
+        if (msgError) throw msgError;
+      }
 
       toast.success("Đã gửi tin nhắn");
       setReplyMessage("");
+      setMediaFile(null);
+      setMediaPreview(null);
       setShowReplyInput(false);
       
       // Navigate to messages page
@@ -243,7 +304,37 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
     } catch (error) {
       console.error("Error sending reply:", error);
       toast.error("Không thể gửi tin nhắn");
+    } finally {
+      setUploading(false);
     }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Kiểm tra file size (max 20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("File quá lớn. Tối đa 20MB");
+      return;
+    }
+
+    // Kiểm tra file type
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+      toast.error("Chỉ hỗ trợ ảnh và video");
+      return;
+    }
+
+    setMediaFile(file);
+    setMediaPreview(URL.createObjectURL(file));
+  };
+
+  const clearMedia = () => {
+    if (mediaPreview) {
+      URL.revokeObjectURL(mediaPreview);
+    }
+    setMediaFile(null);
+    setMediaPreview(null);
   };
 
   if (!currentStory) return null;
@@ -388,39 +479,103 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
             </div>
           </div>
         ) : (
-          <div className="bg-black/50 backdrop-blur-sm rounded-full px-4 py-2 flex items-center gap-2">
-            <Input
-              value={replyMessage}
-              onChange={(e) => setReplyMessage(e.target.value)}
-              placeholder="Gửi tin nhắn..."
-              className="bg-transparent border-none text-white placeholder:text-white/60 focus-visible:ring-0"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSendReply();
-                }
-              }}
-              autoFocus
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white hover:bg-white/20 rounded-full flex-shrink-0"
-              onClick={handleSendReply}
-              disabled={!replyMessage.trim()}
-            >
-              <Send className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white hover:bg-white/20 rounded-full flex-shrink-0"
-              onClick={() => {
-                setShowReplyInput(false);
-                setReplyMessage("");
-              }}
-            >
-              <X className="h-5 w-5" />
-            </Button>
+          <div className="space-y-2">
+            {/* Media preview */}
+            {mediaPreview && (
+              <div className="bg-black/50 backdrop-blur-sm rounded-lg p-2 relative">
+                {mediaFile?.type.startsWith('video/') ? (
+                  <video
+                    src={mediaPreview}
+                    className="max-h-48 rounded mx-auto"
+                    controls
+                  />
+                ) : (
+                  <img
+                    src={mediaPreview}
+                    alt="Preview"
+                    className="max-h-48 rounded mx-auto object-contain"
+                  />
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-3 right-3 bg-black/70 text-white hover:bg-black rounded-full"
+                  onClick={clearMedia}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            {/* Input box */}
+            <div className="bg-black/50 backdrop-blur-sm rounded-full px-4 py-2 flex items-center gap-2">
+              <Input
+                value={replyMessage}
+                onChange={(e) => setReplyMessage(e.target.value)}
+                placeholder="Gửi tin nhắn..."
+                className="bg-transparent border-none text-white placeholder:text-white/60 focus-visible:ring-0"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !uploading) {
+                    handleSendReply();
+                  }
+                }}
+                autoFocus
+                disabled={uploading}
+              />
+              
+              {/* Image button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20 rounded-full flex-shrink-0"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
+                <Image className="h-5 w-5" />
+              </Button>
+
+              {/* Video button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20 rounded-full flex-shrink-0"
+                onClick={() => {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.accept = "video/*";
+                    fileInputRef.current.click();
+                  }
+                }}
+                disabled={uploading}
+              >
+                <Video className="h-5 w-5" />
+              </Button>
+
+              {/* Send button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20 rounded-full flex-shrink-0"
+                onClick={handleSendReply}
+                disabled={uploading || (!replyMessage.trim() && !mediaFile)}
+              >
+                <Send className="h-5 w-5" />
+              </Button>
+
+              {/* Close button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20 rounded-full flex-shrink-0"
+                onClick={() => {
+                  setShowReplyInput(false);
+                  setReplyMessage("");
+                  clearMedia();
+                }}
+                disabled={uploading}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -480,6 +635,15 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
 
       {/* Hidden audio element */}
       <audio ref={audioRef} className="hidden" />
+      
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
     </div>
   );
 };
