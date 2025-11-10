@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Gift, TrendingUp, Coins, Wallet } from "lucide-react";
+import { Gift, TrendingUp, Coins, Wallet, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useMetaMask } from "@/hooks/useMetaMask";
+
+// F.U Token address on BSC Testnet
+const FU_TOKEN_ADDRESS = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1";
 
 interface GroupRewardsProps {
   userId: string;
@@ -165,6 +168,45 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
     }
   };
 
+  const importTokenToMetaMask = async () => {
+    if (!window.ethereum) {
+      toast({
+        title: "MetaMask không tìm thấy",
+        description: "Vui lòng cài đặt MetaMask",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const wasAdded = await window.ethereum.request({
+        method: 'wallet_watchAsset',
+        params: {
+          type: 'ERC20',
+          options: {
+            address: FU_TOKEN_ADDRESS,
+            symbol: 'F.U',
+            decimals: 18,
+            image: 'https://via.placeholder.com/128', // Replace with actual token logo URL
+          },
+        },
+      });
+
+      if (wasAdded) {
+        toast({
+          title: "Thành công! 🎉",
+          description: "F.U Token đã được thêm vào MetaMask",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể thêm token",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleWithdraw = async () => {
     if (!walletAddress) {
       toast({
@@ -318,6 +360,15 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
                 <p className="text-xs text-muted-foreground mb-1">Địa chỉ ví</p>
                 <p className="font-mono text-sm break-all">{walletAddress}</p>
               </div>
+
+              <Button 
+                onClick={importTokenToMetaMask}
+                variant="outline"
+                className="w-full"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Import F.U Token vào MetaMask
+              </Button>
 
               <div className="flex gap-2">
                 <Input
