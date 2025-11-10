@@ -15,6 +15,7 @@ import SpinWheel from "@/components/games/SpinWheel";
 import WordPuzzle from "@/components/games/WordPuzzle";
 import GameLeaderboard from "@/components/games/GameLeaderboard";
 import QuizForSpins from "@/components/games/QuizForSpins";
+import MemoryMatch from "@/components/games/MemoryMatch";
 import UserLevel from "@/components/profile/UserLevel";
 import UserBadges from "@/components/profile/UserBadges";
 import DailyTasks from "@/components/profile/DailyTasks";
@@ -514,9 +515,10 @@ const GroupDetail = () => {
                 />
               ) : showLeaderboard ? (
                 <Tabs defaultValue="spin" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="spin">Vòng Quay</TabsTrigger>
                     <TabsTrigger value="puzzle">Ghép Chữ</TabsTrigger>
+                    <TabsTrigger value="memory">Ghép Hình</TabsTrigger>
                   </TabsList>
                   <TabsContent value="spin">
                     <GameLeaderboard groupId={groupId!} gameType="spin_wheel" />
@@ -524,18 +526,25 @@ const GroupDetail = () => {
                   <TabsContent value="puzzle">
                     <GameLeaderboard groupId={groupId!} gameType="word_puzzle" />
                   </TabsContent>
+                  <TabsContent value="memory">
+                    <GameLeaderboard groupId={groupId!} gameType="memory_match" />
+                  </TabsContent>
                 </Tabs>
               ) : (
                 <Tabs defaultValue="spin" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="spin">Vòng Quay</TabsTrigger>
                     <TabsTrigger value="puzzle">Ghép Chữ</TabsTrigger>
+                    <TabsTrigger value="memory">Ghép Hình</TabsTrigger>
                   </TabsList>
                   <TabsContent value="spin">
                     <SpinWheel groupId={groupId!} />
                   </TabsContent>
                   <TabsContent value="puzzle">
                     <WordPuzzle groupId={groupId!} />
+                  </TabsContent>
+                  <TabsContent value="memory">
+                    <MemoryMatch groupId={groupId!} />
                   </TabsContent>
                 </Tabs>
               )}
