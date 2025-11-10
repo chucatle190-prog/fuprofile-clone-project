@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Edit2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import GroupRewards from "@/components/groups/GroupRewards";
 
 interface Group {
   id: string;
@@ -470,6 +471,11 @@ const GroupDetail = () => {
             </TabsContent>
 
             <TabsContent value="games" className="space-y-4">
+              {/* Rewards Section */}
+              {user && groupId && (
+                <GroupRewards userId={user.id} groupId={groupId} />
+              )}
+
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold">🎮 Mini Games</h2>
                 <div className="flex gap-2">
