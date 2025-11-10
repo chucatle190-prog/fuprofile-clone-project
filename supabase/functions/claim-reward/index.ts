@@ -36,11 +36,11 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: ClaimRewardRequest = await req.json().catch(() => ({}));
-    const rewardAmount = body.amount || 10; // Default 10 CAMLY
+    const rewardAmount = body.amount || 10; // Default 10 F.U Token
     const rewardType = body.rewardType || 'daily_claim';
     const description = body.description || 'Nhận thưởng hàng ngày';
 
-    console.log(`Processing claim reward for user ${user.id}: ${rewardAmount} CAMLY`);
+    console.log(`Processing claim reward for user ${user.id}: ${rewardAmount} F.U Token`);
 
     // Get current wallet
     const { data: wallet, error: walletError } = await supabase
@@ -92,7 +92,9 @@ Deno.serve(async (req) => {
         amount: rewardAmount,
         newBalance: newCamlyBalance,
         totalReward: newTotalReward,
-        message: `Đã nhận ${rewardAmount} CAMLY thành công!`,
+        message: `Đã nhận ${rewardAmount} F.U Token thành công!`,
+        tokenAddress: '0x8bD5796A709663BDC2279b87fFdA3214f0ea078B',
+        treasuryWallet: '0x6351265ff7f9f036eb0e29662ae0ac6982d8eba5',
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

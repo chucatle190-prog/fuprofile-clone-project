@@ -41,7 +41,8 @@ const BSC_TESTNET = {
   blockExplorerUrls: ["https://testnet.bscscan.com/"],
 };
 
-const CAMLY_TOKEN_ADDRESS = "0x0910320181889feFDE0BB1Ca63962b0A8882e413";
+const FU_TOKEN_ADDRESS = "0x8bD5796A709663BDC2279b87fFdA3214f0ea078B";
+const TREASURY_WALLET = "0x6351265ff7f9f036eb0e29662ae0ac6982d8eba5";
 
 const Wallet = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -159,7 +160,7 @@ const Wallet = () => {
         body: {
           amount: 10,
           rewardType: 'daily_claim',
-          description: 'Nhận thưởng hàng ngày'
+          description: 'Nhận thưởng F.U Token hàng ngày'
         }
       });
 
@@ -230,7 +231,7 @@ const Wallet = () => {
                     </div>
                     <div className="bg-accent/10 rounded-lg p-4">
                       <p className="text-sm text-muted-foreground">Total Reward</p>
-                      <p className="text-2xl font-bold text-accent">{wallet.total_reward_camly} CAMLY</p>
+                      <p className="text-2xl font-bold text-accent">{wallet.total_reward_camly} F.U</p>
                     </div>
                   </div>
 
@@ -244,7 +245,7 @@ const Wallet = () => {
                       <span className="font-semibold">{wallet.usdt_balance}</span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-secondary/30 rounded-lg">
-                      <span className="font-medium">CAMLY</span>
+                      <span className="font-medium">F.U Token</span>
                       <span className="font-semibold">{wallet.camly_balance}</span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-secondary/30 rounded-lg">
@@ -282,8 +283,8 @@ const Wallet = () => {
                   </Button>
 
                   <div className="text-xs text-muted-foreground bg-secondary/30 p-3 rounded">
-                    <p className="font-medium mb-1">CAMLY Token Address:</p>
-                    <code className="break-all">{CAMLY_TOKEN_ADDRESS}</code>
+                    <p className="font-medium mb-1">F.U Token Address (BSC Testnet):</p>
+                    <code className="break-all">{FU_TOKEN_ADDRESS}</code>
                   </div>
                 </>
               )}

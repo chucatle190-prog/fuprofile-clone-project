@@ -14,8 +14,8 @@ interface Puzzle {
 
 const PUZZLES: Puzzle[] = [
   { id: 1, original: "Father Universe", scrambled: "" },
-  { id: 2, original: "Happy Camly coin", scrambled: "" },
-  { id: 3, original: "Camly life", scrambled: "" },
+  { id: 2, original: "Happy F.U Token", scrambled: "" },
+  { id: 3, original: "F.U Life", scrambled: "" },
 ];
 
 const shuffleString = (str: string): string => {
