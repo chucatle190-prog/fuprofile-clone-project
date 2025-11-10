@@ -13,7 +13,7 @@ interface Puzzle {
 }
 
 const PUZZLES: Puzzle[] = [
-  { id: 1, original: "Fath Univeres", scrambled: "" },
+  { id: 1, original: "Father Universe", scrambled: "" },
   { id: 2, original: "Happy Camly coin", scrambled: "" },
   { id: 3, original: "Camly life", scrambled: "" },
 ];

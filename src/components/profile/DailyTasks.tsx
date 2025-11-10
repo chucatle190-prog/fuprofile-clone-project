@@ -13,6 +13,7 @@ interface TaskProgress {
   post_created: boolean;
   games_played: number;
   messages_sent: boolean;
+  streak_count: number;
 }
 
 const DailyTasks = ({ userId }: DailyTasksProps) => {
@@ -20,6 +21,7 @@ const DailyTasks = ({ userId }: DailyTasksProps) => {
     post_created: false,
     games_played: 0,
     messages_sent: false,
+    streak_count: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -45,6 +47,7 @@ const DailyTasks = ({ userId }: DailyTasksProps) => {
           post_created: data.post_created,
           games_played: data.games_played,
           messages_sent: data.messages_sent,
+          streak_count: data.streak_count || 0,
         });
       }
     } catch (error) {
@@ -60,7 +63,9 @@ const DailyTasks = ({ userId }: DailyTasksProps) => {
     tasks.messages_sent,
   ].filter(Boolean).length;
 
-  const totalReward = completedTasks * 5;
+  const baseReward = completedTasks * 5;
+  const streakBonus = tasks.streak_count > 1 ? tasks.streak_count * 2 : 0;
+  const totalReward = baseReward + streakBonus;
 
   if (loading) {
     return (
@@ -79,10 +84,17 @@ const DailyTasks = ({ userId }: DailyTasksProps) => {
           <span className="flex items-center gap-2">
             📋 Nhiệm vụ hàng ngày
           </span>
-          <span className="flex items-center gap-1 text-yellow-500">
-            <Bitcoin className="h-5 w-5" />
-            {totalReward} BTC
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            <span className="flex items-center gap-1 text-yellow-500">
+              <Bitcoin className="h-5 w-5" />
+              {totalReward} BTC
+            </span>
+            {tasks.streak_count > 1 && (
+              <span className="text-xs flex items-center gap-1 text-orange-500 font-bold">
+                🔥 Streak: {tasks.streak_count} ngày
+              </span>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -174,13 +186,20 @@ const DailyTasks = ({ userId }: DailyTasksProps) => {
         </div>
 
         {completedTasks === 3 && (
-          <div className="mt-4 p-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-lg border-2 border-yellow-500/20 text-center">
+          <div className="mt-4 p-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-lg border-2 border-yellow-500/20 text-center space-y-2">
             <p className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
               🎉 Hoàn thành tất cả nhiệm vụ!
             </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Bạn đã nhận được 15 BTC hôm nay
+            <p className="text-sm text-muted-foreground">
+              Phần thưởng hôm nay: {baseReward} BTC
+              {streakBonus > 0 && ` + ${streakBonus} BTC (Streak Bonus)`}
             </p>
+            {tasks.streak_count > 1 && (
+              <div className="flex items-center justify-center gap-2 text-orange-500 font-bold">
+                <span className="text-2xl">🔥</span>
+                <span>Streak {tasks.streak_count} ngày liên tiếp!</span>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

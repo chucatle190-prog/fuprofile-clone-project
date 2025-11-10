@@ -188,8 +188,10 @@ export type Database = {
           created_at: string | null
           games_played: number | null
           id: string
+          last_streak_date: string | null
           messages_sent: boolean | null
           post_created: boolean | null
+          streak_count: number | null
           task_date: string
           updated_at: string | null
           user_id: string
@@ -198,8 +200,10 @@ export type Database = {
           created_at?: string | null
           games_played?: number | null
           id?: string
+          last_streak_date?: string | null
           messages_sent?: boolean | null
           post_created?: boolean | null
+          streak_count?: number | null
           task_date?: string
           updated_at?: string | null
           user_id: string
@@ -208,8 +212,10 @@ export type Database = {
           created_at?: string | null
           games_played?: number | null
           id?: string
+          last_streak_date?: string | null
           messages_sent?: boolean | null
           post_created?: boolean | null
+          streak_count?: number | null
           task_date?: string
           updated_at?: string | null
           user_id?: string
@@ -770,6 +776,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      reward_history: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string | null
+          id: string
+          reward_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          reward_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          reward_type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       shares: {
         Row: {

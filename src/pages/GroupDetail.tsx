@@ -18,6 +18,8 @@ import QuizForSpins from "@/components/games/QuizForSpins";
 import UserLevel from "@/components/profile/UserLevel";
 import UserBadges from "@/components/profile/UserBadges";
 import DailyTasks from "@/components/profile/DailyTasks";
+import RewardHistory from "@/components/profile/RewardHistory";
+import { useDailyTaskTracker } from "@/hooks/useDailyTaskTracker";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Edit2 } from "lucide-react";
@@ -45,6 +47,9 @@ const GroupDetail = () => {
   const [showQuiz, setShowQuiz] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto track daily tasks
+  useDailyTaskTracker(user?.id);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -507,6 +512,7 @@ const GroupDetail = () => {
               {user && (
                 <>
                   <DailyTasks userId={user.id} />
+                  <RewardHistory userId={user.id} />
                   <UserLevel userId={user.id} />
                   <UserBadges userId={user.id} />
                 </>
