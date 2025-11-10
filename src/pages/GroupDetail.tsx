@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -9,23 +9,15 @@ import MobileNav from "@/components/MobileNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, MessageSquare, Gamepad2, ArrowLeft } from "lucide-react";
+import { Users, MessageSquare, Gamepad2, ArrowLeft, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import SpinWheel from "@/components/games/SpinWheel";
 import WordPuzzle from "@/components/games/WordPuzzle";
+import GameLeaderboard from "@/components/games/GameLeaderboard";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Edit2, Trash2 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Group {
   id: string;
@@ -34,31 +26,18 @@ interface Group {
   cover_url: string | null;
 }
 
-interface Message {
-  id: string;
-  conversation_id: string;
-  sender_id: string;
-  content: string;
-  created_at: string;
-  edited_at: string | null;
-  profiles: {
-    username: string;
-    full_name: string | null;
-    avatar_url: string | null;
-  };
-}
-
 const GroupDetail = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [editingMessage, setEditingMessage] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
-  const [deletingMessage, setDeletingMessage] = useState<string | null>(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -93,13 +72,14 @@ const GroupDetail = () => {
     if (!groupId) return;
 
     const channel = supabase
-      .channel(`group_${groupId}`)
+      .channel(`group_posts_${groupId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "messages",
+          table: "group_posts",
+          filter: `group_id=eq.${groupId}`,
         },
         () => {
           fetchMessages();
@@ -111,6 +91,10 @@ const GroupDetail = () => {
       supabase.removeChannel(channel);
     };
   }, [groupId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const fetchGroup = async () => {
     if (!groupId) return;
@@ -136,24 +120,23 @@ const GroupDetail = () => {
   const fetchMessages = async () => {
     if (!groupId) return;
 
-    const { data: messages } = await supabase
-      .from("messages")
+    const { data: posts } = await supabase
+      .from("group_posts")
       .select("*")
-      .eq("conversation_id", groupId)
-      .is("deleted_at", null)
+      .eq("group_id", groupId)
       .order("created_at", { ascending: true });
 
-    if (messages) {
-      const userIds = Array.from(new Set(messages.map((m: any) => m.sender_id)));
+    if (posts) {
+      const userIds = Array.from(new Set(posts.map((m: any) => m.user_id)));
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, username, full_name, avatar_url")
         .in("id", userIds);
 
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
-      const enriched = messages.map((m: any) => ({
+      const enriched = posts.map((m: any) => ({
         ...m,
-        profiles: profileMap.get(m.sender_id) || {
+        profiles: profileMap.get(m.user_id) || {
           username: "Unknown",
           full_name: null,
           avatar_url: null,
@@ -168,9 +151,9 @@ const GroupDetail = () => {
     if (!newMessage.trim() || !user || !groupId) return;
 
     try {
-      const { error } = await supabase.from("messages").insert({
-        conversation_id: groupId,
-        sender_id: user.id,
+      const { error } = await supabase.from("group_posts").insert({
+        group_id: groupId,
+        user_id: user.id,
         content: newMessage.trim(),
       });
 
@@ -182,7 +165,7 @@ const GroupDetail = () => {
     }
   };
 
-  const startEdit = (message: Message) => {
+  const startEdit = (message: any) => {
     setEditingMessage(message.id);
     setEditContent(message.content);
   };
@@ -192,10 +175,10 @@ const GroupDetail = () => {
 
     try {
       const { error } = await supabase
-        .from("messages")
+        .from("group_posts")
         .update({
           content: editContent.trim(),
-          edited_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .eq("id", editingMessage);
 
@@ -212,12 +195,11 @@ const GroupDetail = () => {
   const deleteMessage = async (messageId: string) => {
     try {
       const { error } = await supabase
-        .from("messages")
-        .update({ deleted_at: new Date().toISOString() })
+        .from("group_posts")
+        .delete()
         .eq("id", messageId);
 
       if (error) throw error;
-      setDeletingMessage(null);
       toast.success("Đã xóa tin nhắn");
     } catch (error) {
       console.error("Error deleting message:", error);
@@ -289,105 +271,106 @@ const GroupDetail = () => {
                 </CardHeader>
                 <CardContent>
                   {/* Messages */}
-                  <div className="space-y-4 mb-4 max-h-[500px] overflow-y-auto">
-                    {messages.map((message) => {
-                      const isOwn = message.sender_id === user?.id;
-                      return (
-                        <div
-                          key={message.id}
-                          className={`flex gap-3 ${
-                            isOwn ? "flex-row-reverse" : "flex-row"
-                          }`}
-                        >
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage
-                              src={message.profiles.avatar_url || ""}
-                            />
-                            <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                              {message.profiles.username[0].toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-
+                  <ScrollArea className="h-[500px] pr-4">
+                    <div className="space-y-4 mb-4">
+                      {messages.map((message) => {
+                        const isOwn = message.user_id === user?.id;
+                        return (
                           <div
-                            className={`flex-1 max-w-[70%] ${
-                              isOwn ? "items-end" : "items-start"
-                            } flex flex-col`}
+                            key={message.id}
+                            className={`flex gap-3 ${
+                              isOwn ? "flex-row-reverse" : "flex-row"
+                            }`}
                           >
-                            {editingMessage === message.id ? (
-                              <div className="w-full space-y-2">
-                                <Input
-                                  value={editContent}
-                                  onChange={(e) => setEditContent(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") saveEdit();
-                                    if (e.key === "Escape")
-                                      setEditingMessage(null);
-                                  }}
-                                  autoFocus
-                                />
-                                <div className="flex gap-2">
-                                  <Button size="sm" onClick={saveEdit}>
-                                    Lưu
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setEditingMessage(null)}
-                                  >
-                                    Hủy
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div
-                                className={`px-4 py-2 rounded-2xl group relative ${
-                                  isOwn
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted"
-                                }`}
-                              >
-                                <p className="text-sm break-words">
-                                  {message.content}
-                                </p>
-                                {message.edited_at && (
-                                  <span className="text-xs opacity-70">
-                                    {" "}
-                                    (đã chỉnh sửa)
-                                  </span>
-                                )}
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage
+                                src={message.profiles.avatar_url || ""}
+                              />
+                              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                                {message.profiles.username[0].toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
 
-                                {isOwn && (
-                                  <div className="absolute -right-20 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-7 w-7"
-                                      onClick={() => startEdit(message)}
-                                    >
-                                      <Edit2 className="h-3 w-3" />
+                            <div
+                              className={`flex-1 max-w-[70%] ${
+                                isOwn ? "items-end" : "items-start"
+                              } flex flex-col`}
+                            >
+                              {editingMessage === message.id ? (
+                                <div className="w-full space-y-2">
+                                  <Input
+                                    value={editContent}
+                                    onChange={(e) => setEditContent(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") saveEdit();
+                                      if (e.key === "Escape")
+                                        setEditingMessage(null);
+                                    }}
+                                    autoFocus
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button size="sm" onClick={saveEdit}>
+                                      Lưu
                                     </Button>
                                     <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-7 w-7"
-                                      onClick={() =>
-                                        setDeletingMessage(message.id)
-                                      }
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setEditingMessage(null)}
                                     >
-                                      <Trash2 className="h-3 w-3" />
+                                      Hủy
                                     </Button>
                                   </div>
-                                )}
-                              </div>
-                            )}
+                                </div>
+                              ) : (
+                                <div
+                                  className={`px-4 py-2 rounded-2xl group relative ${
+                                    isOwn
+                                      ? "bg-primary text-primary-foreground"
+                                      : "bg-muted"
+                                  }`}
+                                >
+                                  <p className="text-sm break-words">
+                                    {message.content}
+                                  </p>
+                                  {message.updated_at !== message.created_at && (
+                                    <span className="text-xs opacity-70">
+                                      {" "}
+                                      (đã chỉnh sửa)
+                                    </span>
+                                  )}
+
+                                  {isOwn && (
+                                    <div className="absolute -right-20 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-7 w-7"
+                                        onClick={() => startEdit(message)}
+                                      >
+                                        <Edit2 className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-7 w-7"
+                                        onClick={() => deleteMessage(message.id)}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </ScrollArea>
 
                   {/* Input */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mt-4">
                     <Input
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
@@ -405,37 +388,51 @@ const GroupDetail = () => {
             </TabsContent>
 
             <TabsContent value="games" className="space-y-4">
-              <SpinWheel />
-              <WordPuzzle />
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">🎮 Mini Games</h2>
+                <Button
+                  variant={showLeaderboard ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowLeaderboard(!showLeaderboard)}
+                >
+                  <Trophy className="h-4 w-4 mr-2" />
+                  {showLeaderboard ? "Chơi game" : "Bảng xếp hạng"}
+                </Button>
+              </div>
+
+              {showLeaderboard ? (
+                <Tabs defaultValue="spin" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="spin">Vòng Quay</TabsTrigger>
+                    <TabsTrigger value="puzzle">Ghép Chữ</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="spin">
+                    <GameLeaderboard groupId={groupId!} gameType="spin_wheel" />
+                  </TabsContent>
+                  <TabsContent value="puzzle">
+                    <GameLeaderboard groupId={groupId!} gameType="word_puzzle" />
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                <Tabs defaultValue="spin" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="spin">Vòng Quay</TabsTrigger>
+                    <TabsTrigger value="puzzle">Ghép Chữ</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="spin">
+                    <SpinWheel groupId={groupId!} />
+                  </TabsContent>
+                  <TabsContent value="puzzle">
+                    <WordPuzzle groupId={groupId!} />
+                  </TabsContent>
+                </Tabs>
+              )}
             </TabsContent>
           </Tabs>
         </main>
         <RightSidebar />
       </div>
       <MobileNav user={user} />
-
-      {/* Delete Confirmation */}
-      <AlertDialog
-        open={!!deletingMessage}
-        onOpenChange={() => setDeletingMessage(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Xóa tin nhắn?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bạn có chắc muốn xóa tin nhắn này? Hành động này không thể hoàn tác.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deletingMessage && deleteMessage(deletingMessage)}
-            >
-              Xóa
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

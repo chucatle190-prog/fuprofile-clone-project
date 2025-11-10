@@ -3,6 +3,8 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { toast } from "sonner";
 import { Shuffle, Check } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Puzzle {
   id: number;
@@ -25,7 +27,12 @@ const shuffleString = (str: string): string => {
   return arr.join("");
 };
 
-const WordPuzzle = () => {
+interface WordPuzzleProps {
+  groupId: string;
+}
+
+const WordPuzzle = ({ groupId }: WordPuzzleProps) => {
+  const { user } = useAuth();
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
   const [userAnswers, setUserAnswers] = useState<{ [key: number]: string }>({});
   const [completed, setCompleted] = useState<{ [key: number]: boolean }>({});
@@ -43,13 +50,45 @@ const WordPuzzle = () => {
     setUserAnswers((prev) => ({ ...prev, [id]: value }));
   };
 
-  const checkAnswer = (id: number) => {
+  const checkAnswer = async (id: number) => {
     const puzzle = puzzles.find((p) => p.id === id);
     const userAnswer = userAnswers[id]?.trim().toLowerCase();
     const correctAnswer = puzzle?.original.toLowerCase();
 
     if (userAnswer === correctAnswer) {
       setCompleted((prev) => ({ ...prev, [id]: true }));
+      
+      // Calculate score (points based on puzzle difficulty/position)
+      const score = id * 10;
+
+      if (user) {
+        // Save score to database
+        const { error: scoreError } = await supabase.from("game_scores").insert({
+          user_id: user.id,
+          group_id: groupId,
+          game_type: "word_puzzle",
+          score: score,
+        });
+
+        if (scoreError) {
+          console.error("Error saving score:", scoreError);
+        }
+
+        // Create notification
+        const { error: notifError } = await supabase
+          .from("group_notifications")
+          .insert({
+            group_id: groupId,
+            user_id: user.id,
+            type: "game_score",
+            content: `🧩 đã giải đúng câu đố "${puzzle?.original}" và nhận ${score} điểm!`,
+          });
+
+        if (notifError) {
+          console.error("Error creating notification:", notifError);
+        }
+      }
+
       toast.success("🎉 Chính xác! Bạn đã ghép đúng từ!");
     } else {
       toast.error("❌ Chưa đúng, thử lại nhé!");

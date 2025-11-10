@@ -3,6 +3,8 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { toast } from "sonner";
 import { Bitcoin } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const PRIZES = [
   { id: 1, value: 1, color: "#FFD700", label: "1 BTC" },
@@ -12,13 +14,18 @@ const PRIZES = [
   { id: 5, value: 100, color: "#F38181", label: "100 BTC 🎉" },
 ];
 
-const SpinWheel = () => {
+interface SpinWheelProps {
+  groupId: string;
+}
+
+const SpinWheel = ({ groupId }: SpinWheelProps) => {
+  const { user } = useAuth();
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<number | null>(null);
 
-  const spinWheel = () => {
-    if (spinning) return;
+  const spinWheel = async () => {
+    if (spinning || !user) return;
 
     setSpinning(true);
     setResult(null);
@@ -33,9 +40,36 @@ const SpinWheel = () => {
 
     setRotation(targetRotation);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       setSpinning(false);
       setResult(prize.value);
+      
+      // Save score to database
+      const { error: scoreError } = await supabase.from("game_scores").insert({
+        user_id: user.id,
+        group_id: groupId,
+        game_type: "spin_wheel",
+        score: prize.value,
+      });
+
+      if (scoreError) {
+        console.error("Error saving score:", scoreError);
+      }
+
+      // Create notification
+      const { error: notifError } = await supabase
+        .from("group_notifications")
+        .insert({
+          group_id: groupId,
+          user_id: user.id,
+          type: "game_score",
+          content: `🎉 đã trúng ${prize.value} BTC trong Vòng Quay!`,
+        });
+
+      if (notifError) {
+        console.error("Error creating notification:", notifError);
+      }
+
       toast.success(`🎉 Chúc mừng! Bạn trúng ${prize.label}!`, {
         duration: 5000,
       });
