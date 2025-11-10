@@ -22,6 +22,28 @@ const ReactionList = ({ storyId, reactionType }: ReactionListProps) => {
 
   useEffect(() => {
     fetchReactedUsers();
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel(`story_reactions:${storyId}:${reactionType}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'story_reactions',
+          filter: `story_id=eq.${storyId}`,
+        },
+        (payload) => {
+          console.log('Reaction change:', payload);
+          fetchReactedUsers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [storyId, reactionType]);
 
   const fetchReactedUsers = async () => {

@@ -45,6 +45,23 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
     setProgress(0);
     fetchReactions();
     
+    // Subscribe to realtime reaction changes
+    const reactionChannel = supabase
+      .channel(`story_reactions:${currentStory?.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'story_reactions',
+          filter: `story_id=eq.${currentStory?.id}`,
+        },
+        () => {
+          fetchReactions();
+        }
+      )
+      .subscribe();
+    
     // Play music if available
     if (currentStory?.music_url && audioRef.current) {
       audioRef.current.src = currentStory.music_url;
@@ -65,6 +82,7 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
 
     return () => {
       clearInterval(interval);
+      supabase.removeChannel(reactionChannel);
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
