@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Gift, TrendingUp, Coins } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Gift, TrendingUp, Coins, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useMetaMask } from "@/hooks/useMetaMask";
 
 interface GroupRewardsProps {
   userId: string;
@@ -22,11 +24,64 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
   const [totalPoints, setTotalPoints] = useState(0);
   const [claimedPoints, setClaimedPoints] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const { toast } = useToast();
+  const { account, connectWallet, isConnecting } = useMetaMask();
 
   useEffect(() => {
     fetchScores();
+    fetchWalletAddress();
   }, [userId, groupId]);
+
+  useEffect(() => {
+    if (account) {
+      updateWalletAddress(account);
+    }
+  }, [account]);
+
+  const fetchWalletAddress = async () => {
+    try {
+      const { data: wallet } = await supabase
+        .from("user_wallets")
+        .select("wallet_address")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      setWalletAddress(wallet?.wallet_address || null);
+    } catch (error) {
+      console.error("Error fetching wallet address:", error);
+    }
+  };
+
+  const updateWalletAddress = async (address: string) => {
+    try {
+      const { error } = await supabase
+        .from("user_wallets")
+        .upsert({
+          user_id: userId,
+          wallet_address: address,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) throw error;
+
+      setWalletAddress(address);
+      toast({
+        title: "Kết nối thành công",
+        description: "Ví MetaMask đã được kết nối",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể kết nối ví",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchScores = async () => {
     try {
@@ -110,6 +165,69 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
     }
   };
 
+  const handleWithdraw = async () => {
+    if (!walletAddress) {
+      toast({
+        title: "Chưa kết nối ví",
+        description: "Vui lòng kết nối ví MetaMask trước",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const amount = parseFloat(withdrawAmount);
+    if (!amount || amount <= 0) {
+      toast({
+        title: "Số lượng không hợp lệ",
+        description: "Vui lòng nhập số lượng F.U Token muốn rút",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (amount > claimedPoints) {
+      toast({
+        title: "Số dư không đủ",
+        description: `Bạn chỉ có ${claimedPoints} F.U Token`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setWithdrawing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const { data, error } = await supabase.functions.invoke('withdraw-tokens', {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: { amount }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Rút token thành công! 🎉",
+          description: data.message,
+        });
+        setWithdrawAmount("");
+        await fetchScores();
+      } else {
+        throw new Error(data.error || 'Có lỗi xảy ra');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể rút token",
+        variant: "destructive",
+      });
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
   const getGameIcon = (gameType: string) => {
     switch (gameType) {
       case "spin_wheel":
@@ -179,6 +297,52 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
             Nhận {unclaimedPoints} F.U Token
           </Button>
         )}
+
+        {/* MetaMask Connection */}
+        <div className="space-y-3 pt-4 border-t">
+          <h4 className="font-semibold text-sm">Rút về ví MetaMask</h4>
+          
+          {!walletAddress ? (
+            <Button 
+              onClick={connectWallet} 
+              disabled={isConnecting}
+              className="w-full"
+              variant="outline"
+            >
+              <Wallet className="mr-2 h-4 w-4" />
+              {isConnecting ? "Đang kết nối..." : "Kết nối MetaMask"}
+            </Button>
+          ) : (
+            <div className="space-y-3">
+              <div className="p-3 rounded-lg bg-muted/50 border">
+                <p className="text-xs text-muted-foreground mb-1">Địa chỉ ví</p>
+                <p className="font-mono text-sm break-all">{walletAddress}</p>
+              </div>
+
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  placeholder="Số lượng F.U"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  min="0"
+                  step="0.01"
+                />
+                <Button 
+                  onClick={handleWithdraw}
+                  disabled={withdrawing || !withdrawAmount}
+                  className="shrink-0"
+                >
+                  {withdrawing ? "Đang rút..." : "Rút"}
+                </Button>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Mạng: BSC Testnet | Phí gas: 0.0001 tBNB
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Recent Scores */}
         <div>
