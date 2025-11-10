@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import ReactionList from "./ReactionList";
 
 const REACTIONS = ["❤️", "😂", "😢", "😍", "👍"];
 
@@ -126,6 +127,18 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
           user_id: currentUserId,
           reaction_type: emoji,
         });
+
+      // Create notification if reacting to someone else's story
+      if (currentStory.user_id !== currentUserId) {
+        await supabase
+          .from("notifications")
+          .insert({
+            user_id: currentStory.user_id,
+            type: "story_reaction",
+            content: `${emoji} đã thả reaction vào story của bạn`,
+            related_id: currentStory.id,
+          });
+      }
 
       setUserReaction(emoji);
       setReactions(prev => ({
@@ -249,12 +262,19 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
 
       {/* Reactions */}
       <div className="absolute bottom-24 left-4 right-4 z-10 flex items-center justify-between">
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {Object.entries(reactions).filter(([_, count]) => count > 0).map(([emoji, count]) => (
-            <div key={emoji} className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
-              <span className="text-lg">{emoji}</span>
-              <span className="text-white text-xs font-semibold">{count}</span>
-            </div>
+            <Popover key={emoji}>
+              <PopoverTrigger asChild>
+                <button className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1 hover:bg-black/70 transition-colors">
+                  <span className="text-lg">{emoji}</span>
+                  <span className="text-white text-xs font-semibold">{count}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-3" align="start">
+                <ReactionList storyId={currentStory.id} reactionType={emoji} />
+              </PopoverContent>
+            </Popover>
           ))}
         </div>
 

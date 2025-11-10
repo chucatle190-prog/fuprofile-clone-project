@@ -66,6 +66,8 @@ const StoryCarousel = ({ currentUserId }: StoryCarouselProps) => {
   }, [currentUserId]);
 
   const fetchStories = async () => {
+    if (!currentUserId) return;
+    
     const { data, error } = await supabase
       .from('stories')
       .select(`

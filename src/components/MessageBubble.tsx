@@ -87,6 +87,24 @@ const MessageBubble = ({ messageId, content, createdAt, isOwn, currentUserId, se
           user_id: currentUserId,
           reaction_type: emoji,
         });
+
+      // Create notification if reacting to someone else's message
+      const { data: message } = await supabase
+        .from("messages")
+        .select("sender_id")
+        .eq("id", messageId)
+        .single();
+
+      if (message && message.sender_id !== currentUserId) {
+        await supabase
+          .from("notifications")
+          .insert({
+            user_id: message.sender_id,
+            type: "message_reaction",
+            content: `${emoji} đã thả reaction vào tin nhắn của bạn`,
+            related_id: messageId,
+          });
+      }
     }
   };
 
