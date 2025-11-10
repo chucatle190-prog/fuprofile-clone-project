@@ -19,6 +19,7 @@ import UserLevel from "@/components/profile/UserLevel";
 import UserBadges from "@/components/profile/UserBadges";
 import DailyTasks from "@/components/profile/DailyTasks";
 import RewardHistory from "@/components/profile/RewardHistory";
+import GroupMembers from "@/components/GroupMembers";
 import { useDailyTaskTracker } from "@/hooks/useDailyTaskTracker";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -33,11 +34,16 @@ interface Group {
   created_by: string;
 }
 
+interface UserRole {
+  role: string;
+}
+
 const GroupDetail = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [group, setGroup] = useState<Group | null>(null);
+  const [userRole, setUserRole] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -74,11 +80,12 @@ const GroupDetail = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if (groupId) {
+    if (groupId && user) {
       fetchGroup();
       fetchMessages();
+      fetchUserRole();
     }
-  }, [groupId]);
+  }, [groupId, user]);
 
   useEffect(() => {
     if (!groupId) return;
@@ -126,6 +133,24 @@ const GroupDetail = () => {
       navigate("/groups");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserRole = async () => {
+    if (!groupId || !user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("group_members")
+        .select("role")
+        .eq("group_id", groupId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (error) throw error;
+      if (data) setUserRole(data.role);
+    } catch (error) {
+      console.error("Error fetching user role:", error);
     }
   };
 
@@ -509,8 +534,13 @@ const GroupDetail = () => {
             </TabsContent>
 
             <TabsContent value="profile" className="space-y-4">
-              {user && (
+              {user && groupId && (
                 <>
+                  <GroupMembers 
+                    groupId={groupId} 
+                    currentUserId={user.id}
+                    userRole={userRole}
+                  />
                   <DailyTasks userId={user.id} />
                   <RewardHistory userId={user.id} />
                   <UserLevel userId={user.id} />

@@ -85,6 +85,34 @@ export const useRealtimeNotifications = (userId: string | undefined) => {
           });
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'group_members',
+        },
+        async (payload) => {
+          const newMember = payload.new as any;
+          
+          // Chỉ thông báo nếu user hiện tại là người được thêm vào nhóm
+          if (newMember.user_id === userId) {
+            // Lấy thông tin nhóm
+            const { data: group } = await supabase
+              .from('groups')
+              .select('name')
+              .eq('id', newMember.group_id)
+              .single();
+
+            if (group) {
+              toast({
+                title: 'Tham gia nhóm mới',
+                description: `Bạn đã được thêm vào nhóm "${group.name}"`,
+              });
+            }
+          }
+        }
+      )
       .subscribe();
 
     return () => {
