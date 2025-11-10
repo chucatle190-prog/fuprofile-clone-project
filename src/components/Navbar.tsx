@@ -10,6 +10,7 @@ import { Badge } from "./ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
+import logoVideo from "@/assets/logo-animated.mp4";
 
 interface NavbarProps {
   user: UserType | null;
@@ -33,8 +34,16 @@ const Navbar = ({ user }: NavbarProps) => {
     <nav className="bg-card border-b border-border sticky top-0 z-50 shadow-medium">
       <div className="container mx-auto px-4 h-14 flex items-center justify-between gap-4">
         {/* Logo */}
-        <NavLink to="/feed" className="text-xl font-bold text-primary flex-shrink-0">
-          F.U.Profile
+        <NavLink to="/feed" className="flex-shrink-0">
+          <video
+            src={logoVideo}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="h-10 w-auto rounded-lg object-cover"
+            style={{ aspectRatio: '16/9' }}
+          />
         </NavLink>
 
         {/* Search Bar - Desktop */}

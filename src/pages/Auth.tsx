@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff } from "lucide-react";
+import logoVideo from "@/assets/logo-animated.mp4";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -157,7 +158,18 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-subtle p-4">
       <Card className="w-full max-w-md shadow-medium">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+          <div className="flex justify-center mb-2">
+            <video
+              src={logoVideo}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="h-20 w-auto rounded-lg object-cover"
+              style={{ aspectRatio: '16/9' }}
+            />
+          </div>
+          <CardTitle className="text-2xl font-bold">
             F.U.Profile
           </CardTitle>
           <CardDescription>
