@@ -1,11 +1,13 @@
 import { useEffect, useState, useRef } from "react";
-import { X, ChevronLeft, ChevronRight, Trash2, Music, Volume2, VolumeX, Smile } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Trash2, Music, Volume2, VolumeX, Smile, Send } from "lucide-react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import ReactionList from "./ReactionList";
+import { Input } from "./ui/input";
+import { useNavigate } from "react-router-dom";
 
 const REACTIONS = ["❤️", "😂", "😢", "😍", "👍"];
 
@@ -38,8 +40,11 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
   const [isMuted, setIsMuted] = useState(false);
   const [reactions, setReactions] = useState<{ [key: string]: number }>({});
   const [userReaction, setUserReaction] = useState<string | null>(null);
+  const [replyMessage, setReplyMessage] = useState("");
+  const [showReplyInput, setShowReplyInput] = useState(false);
   const currentStory = stories[currentIndex];
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setProgress(0);
@@ -202,6 +207,45 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
     }
   };
 
+  const handleSendReply = async () => {
+    if (!replyMessage.trim() || !currentUserId || !currentStory) return;
+    if (currentStory.user_id === currentUserId) {
+      toast.error("Không thể gửi tin nhắn cho chính mình");
+      return;
+    }
+
+    try {
+      // Tạo hoặc lấy conversation
+      const { data: convId, error: convError } = await supabase
+        .rpc('create_direct_conversation', { other_user_id: currentStory.user_id });
+
+      if (convError) throw convError;
+
+      // Gửi tin nhắn
+      const { error: msgError } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: convId,
+          sender_id: currentUserId,
+          content: replyMessage,
+        });
+
+      if (msgError) throw msgError;
+
+      toast.success("Đã gửi tin nhắn");
+      setReplyMessage("");
+      setShowReplyInput(false);
+      
+      // Navigate to messages page
+      setTimeout(() => {
+        navigate("/messages");
+      }, 500);
+    } catch (error) {
+      console.error("Error sending reply:", error);
+      toast.error("Không thể gửi tin nhắn");
+    }
+  };
+
   if (!currentStory) return null;
 
   const timeAgo = (date: string) => {
@@ -279,55 +323,106 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
       </div>
 
       {/* Reactions */}
-      <div className="absolute bottom-24 left-4 right-4 z-10 flex items-center justify-between">
-        <div className="flex gap-2 flex-wrap">
-          {Object.entries(reactions).filter(([_, count]) => count > 0).map(([emoji, count]) => (
-            <Popover key={emoji}>
-              <PopoverTrigger asChild>
-                <button className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1 hover:bg-black/70 transition-colors">
-                  <span className="text-lg">{emoji}</span>
-                  <span className="text-white text-xs font-semibold">{count}</span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-3" align="start">
-                <ReactionList storyId={currentStory.id} reactionType={emoji} />
-              </PopoverContent>
-            </Popover>
-          ))}
-        </div>
+      <div className="absolute bottom-24 left-4 right-4 z-10">
+        {!showReplyInput ? (
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2 flex-wrap">
+              {Object.entries(reactions).filter(([_, count]) => count > 0).map(([emoji, count]) => (
+                <Popover key={emoji}>
+                  <PopoverTrigger asChild>
+                    <button className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1 hover:bg-black/70 transition-colors">
+                      <span className="text-lg">{emoji}</span>
+                      <span className="text-white text-xs font-semibold">{count}</span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-3" align="start">
+                    <ReactionList storyId={currentStory.id} reactionType={emoji} />
+                  </PopoverContent>
+                </Popover>
+              ))}
+            </div>
 
-        <Popover>
-          <PopoverTrigger asChild>
+            <div className="flex gap-2">
+              {currentStory.user_id !== currentUserId && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="bg-black/50 backdrop-blur-sm hover:bg-black/70 text-white rounded-full"
+                  onClick={() => setShowReplyInput(true)}
+                >
+                  <Send className="h-5 w-5" />
+                </Button>
+              )}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="bg-black/50 backdrop-blur-sm hover:bg-black/70 text-white rounded-full"
+                  >
+                    {userReaction ? (
+                      <span className="text-xl">{userReaction}</span>
+                    ) : (
+                      <Smile className="h-5 w-5" />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" align="end">
+                  <div className="flex gap-1">
+                    {REACTIONS.map((emoji) => (
+                      <Button
+                        key={emoji}
+                        variant="ghost"
+                        size="icon"
+                        className={`text-2xl hover:scale-125 transition-transform ${
+                          userReaction === emoji ? "bg-accent" : ""
+                        }`}
+                        onClick={() => handleReaction(emoji)}
+                      >
+                        {emoji}
+                      </Button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-black/50 backdrop-blur-sm rounded-full px-4 py-2 flex items-center gap-2">
+            <Input
+              value={replyMessage}
+              onChange={(e) => setReplyMessage(e.target.value)}
+              placeholder="Gửi tin nhắn..."
+              className="bg-transparent border-none text-white placeholder:text-white/60 focus-visible:ring-0"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSendReply();
+                }
+              }}
+              autoFocus
+            />
             <Button
               variant="ghost"
               size="icon"
-              className="bg-black/50 backdrop-blur-sm hover:bg-black/70 text-white rounded-full"
+              className="text-white hover:bg-white/20 rounded-full flex-shrink-0"
+              onClick={handleSendReply}
+              disabled={!replyMessage.trim()}
             >
-              {userReaction ? (
-                <span className="text-xl">{userReaction}</span>
-              ) : (
-                <Smile className="h-5 w-5" />
-              )}
+              <Send className="h-5 w-5" />
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-2" align="end">
-            <div className="flex gap-1">
-              {REACTIONS.map((emoji) => (
-                <Button
-                  key={emoji}
-                  variant="ghost"
-                  size="icon"
-                  className={`text-2xl hover:scale-125 transition-transform ${
-                    userReaction === emoji ? "bg-accent" : ""
-                  }`}
-                  onClick={() => handleReaction(emoji)}
-                >
-                  {emoji}
-                </Button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/20 rounded-full flex-shrink-0"
+              onClick={() => {
+                setShowReplyInput(false);
+                setReplyMessage("");
+              }}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Music info */}
