@@ -25,18 +25,38 @@ const ReactionList = ({ storyId, reactionType }: ReactionListProps) => {
   }, [storyId, reactionType]);
 
   const fetchReactedUsers = async () => {
-    const { data, error } = await supabase
+    // Lấy danh sách user_id đã react
+    const { data: reacts, error } = await supabase
       .from("story_reactions")
-      .select(`
-        user_id,
-        profiles:user_id (username, full_name, avatar_url)
-      `)
+      .select("user_id")
       .eq("story_id", storyId)
       .eq("reaction_type", reactionType);
 
-    if (!error && data) {
-      setUsers(data as any);
+    if (error) {
+      setUsers([]);
+      setLoading(false);
+      return;
     }
+
+    const userIds = Array.from(new Set((reacts || []).map((r: any) => r.user_id)));
+    if (userIds.length === 0) {
+      setUsers([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, username, full_name, avatar_url")
+      .in("id", userIds);
+
+    const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+    const result = userIds
+      .map((id) => profileMap.get(id))
+      .filter(Boolean)
+      .map((p: any) => ({ user_id: p.id, profiles: p })) as ReactedUser[];
+
+    setUsers(result);
     setLoading(false);
   };
 

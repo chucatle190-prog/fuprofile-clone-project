@@ -66,14 +66,10 @@ const StoryCarousel = ({ currentUserId }: StoryCarouselProps) => {
   }, [currentUserId]);
 
   const fetchStories = async () => {
-    if (!currentUserId) return;
-    
-    const { data, error } = await supabase
+    // Lấy stories còn hạn
+    const { data: stories, error } = await supabase
       .from('stories')
-      .select(`
-        *,
-        profiles:user_id (username, avatar_url, full_name)
-      `)
+      .select('*')
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false });
 
@@ -82,31 +78,60 @@ const StoryCarousel = ({ currentUserId }: StoryCarouselProps) => {
       return;
     }
 
-    if (data) {
-      // Group stories by user
-      const grouped = data.reduce((acc: GroupedStories[], story: any) => {
-        const existing = acc.find(g => g.user_id === story.user_id);
-        if (existing) {
-          existing.stories.push(story);
-        } else {
-          acc.push({
-            user_id: story.user_id,
-            username: story.profiles.username,
-            avatar_url: story.profiles.avatar_url,
-            full_name: story.profiles.full_name,
-            stories: [story],
-          });
-        }
-        return acc;
-      }, []);
-
-      // Separate current user's stories from others
-      const myStoriesGroup = grouped.find(g => g.user_id === currentUserId);
-      const otherStories = grouped.filter(g => g.user_id !== currentUserId);
-      
-      setMyStories(myStoriesGroup || null);
-      setGroupedStories(otherStories);
+    if (!stories || stories.length === 0) {
+      setMyStories(null);
+      setGroupedStories([]);
+      return;
     }
+
+    // Lấy profile cho tất cả user xuất hiện trong stories
+    const userIds = Array.from(new Set(stories.map((s: any) => s.user_id)));
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url, full_name')
+      .in('id', userIds);
+
+    const profileMap = new Map(
+      (profilesData || []).map((p: any) => [p.id, p])
+    );
+
+    // Group stories theo user và gắn kèm profile
+    const grouped = stories.reduce((acc: GroupedStories[], story: any) => {
+      const profile = profileMap.get(story.user_id);
+      const storyWithProfile = {
+        ...story,
+        profiles: {
+          username: profile?.username || 'Người dùng',
+          avatar_url: profile?.avatar_url || null,
+          full_name: profile?.full_name || null,
+        }
+      } as Story;
+
+      const existing = acc.find(g => g.user_id === story.user_id);
+      if (existing) {
+        existing.stories.push(storyWithProfile);
+      } else {
+        acc.push({
+          user_id: story.user_id,
+          username: storyWithProfile.profiles.username,
+          avatar_url: storyWithProfile.profiles.avatar_url,
+          full_name: storyWithProfile.profiles.full_name,
+          stories: [storyWithProfile],
+        });
+      }
+      return acc;
+    }, []);
+
+    // Tách stories của mình và của người khác
+    const myStoriesGroup = currentUserId
+      ? grouped.find(g => g.user_id === currentUserId)
+      : null;
+    const otherStories = currentUserId
+      ? grouped.filter(g => g.user_id !== currentUserId)
+      : grouped;
+    
+    setMyStories(myStoriesGroup || null);
+    setGroupedStories(otherStories);
   };
 
   const handleStoryClick = (group: GroupedStories) => {
