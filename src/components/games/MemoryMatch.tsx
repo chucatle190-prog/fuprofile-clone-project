@@ -4,6 +4,11 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Trophy, Clock, RefreshCw } from "lucide-react";
+import fairy1 from "@/assets/game/fairy1.jpg";
+import fairy2 from "@/assets/game/fairy2.jpg";
+import fairy3 from "@/assets/game/fairy3.jpg";
+import fairy4 from "@/assets/game/fairy4.jpg";
+import fairy5 from "@/assets/game/fairy5.jpg";
 
 interface MemoryMatchProps {
   groupId: string;
@@ -11,7 +16,7 @@ interface MemoryMatchProps {
 
 interface CardType {
   id: number;
-  color: string;
+  imageUrl: string;
   isFlipped: boolean;
   isMatched: boolean;
 }
@@ -24,15 +29,7 @@ const LEVELS = [
   { level: 5, gridSize: 64, time: 600, label: "Cực khó (64x64)" },
 ];
 
-const COLORS = [
-  "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8",
-  "#F7DC6F", "#BB8FCE", "#85C1E2", "#F8B88B", "#AFD275",
-  "#FF8C94", "#9ED2C6", "#FFB6B9", "#BBDED6", "#61C0BF",
-  "#FFAAA5", "#FFD3B6", "#DCEDC1", "#A8E6CF", "#FFE156",
-  "#FF6F91", "#FFC75F", "#C9EEFF", "#F67280", "#6C5CE7",
-  "#00B894", "#FDCB6E", "#E17055", "#74B9FF", "#A29BFE",
-  "#FD79A8", "#FDCB9B", "#55EFC4", "#81ECEC", "#FAB1A0"
-];
+const FAIRY_IMAGES = [fairy1, fairy2, fairy3, fairy4, fairy5];
 
 export default function MemoryMatch({ groupId }: MemoryMatchProps) {
   const [currentLevel, setCurrentLevel] = useState(1);
@@ -59,18 +56,24 @@ export default function MemoryMatch({ groupId }: MemoryMatchProps) {
     const totalCards = level.gridSize * level.gridSize;
     const pairs = totalCards / 2;
     
-    const gameColors = COLORS.slice(0, Math.min(pairs, COLORS.length));
-    const cardColors = [...gameColors, ...gameColors];
+    // Repeat fairy images as needed to fill all pairs
+    const cardImages: string[] = [];
+    for (let i = 0; i < pairs; i++) {
+      cardImages.push(FAIRY_IMAGES[i % FAIRY_IMAGES.length]);
+    }
+    
+    // Create pairs
+    const allCardImages = [...cardImages, ...cardImages];
     
     // Shuffle
-    for (let i = cardColors.length - 1; i > 0; i--) {
+    for (let i = allCardImages.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [cardColors[i], cardColors[j]] = [cardColors[j], cardColors[i]];
+      [allCardImages[i], allCardImages[j]] = [allCardImages[j], allCardImages[i]];
     }
 
-    const newCards: CardType[] = cardColors.map((color, index) => ({
+    const newCards: CardType[] = allCardImages.map((imageUrl, index) => ({
       id: index,
-      color,
+      imageUrl,
       isFlipped: false,
       isMatched: false,
     }));
@@ -113,7 +116,7 @@ export default function MemoryMatch({ groupId }: MemoryMatchProps) {
     setTimeout(() => {
       const newCards = [...cards];
       
-      if (cards[first].color === cards[second].color) {
+      if (cards[first].imageUrl === cards[second].imageUrl) {
         // Match!
         newCards[first].isMatched = true;
         newCards[second].isMatched = true;
@@ -289,14 +292,27 @@ export default function MemoryMatch({ groupId }: MemoryMatchProps) {
                   key={card.id}
                   onClick={() => handleCardClick(index)}
                   disabled={!isPlaying || card.isMatched}
-                  className={`${getCardSize()} rounded-lg transition-all duration-300 transform hover:scale-105 disabled:cursor-not-allowed`}
+                  className={`${getCardSize()} rounded-lg transition-all duration-300 transform hover:scale-105 disabled:cursor-not-allowed overflow-hidden relative`}
                   style={{
-                    backgroundColor: card.isFlipped || card.isMatched ? card.color : "#E5E7EB",
+                    backgroundColor: "#E5E7EB",
                     opacity: card.isMatched ? 0.5 : 1,
                   }}
                 >
+                  {(card.isFlipped || card.isMatched) ? (
+                    <img 
+                      src={card.imageUrl} 
+                      alt="Fairy" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
+                      <span className="text-white text-xs md:text-sm font-bold">✨</span>
+                    </div>
+                  )}
                   {card.isMatched && (
-                    <span className="text-xs md:text-sm">✓</span>
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                      <span className="text-white text-xl md:text-3xl">✓</span>
+                    </div>
                   )}
                 </button>
               ))}
