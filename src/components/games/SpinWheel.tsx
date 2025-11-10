@@ -217,9 +217,10 @@ const SpinWheel = ({ groupId }: SpinWheelProps) => {
         {/* Wheel */}
         <div className="relative w-72 h-72">
           <svg
-            className="w-full h-full transition-transform duration-[4000ms] ease-out"
+            className="w-full h-full"
             style={{
               transform: `rotate(${rotation}deg)`,
+              transition: spinning ? 'transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)' : 'none',
             }}
             viewBox="0 0 200 200"
           >

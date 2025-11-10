@@ -224,10 +224,10 @@ const Profile = () => {
 
     const file = e.target.files[0];
     
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
       toast({
         title: "Lỗi",
-        description: "Vui lòng chọn file ảnh",
+        description: "Vui lòng chọn file ảnh hoặc video",
         variant: "destructive",
       });
       return;
@@ -245,7 +245,8 @@ const Profile = () => {
     setUploading(true);
 
     try {
-      const avatarUrl = await uploadImage(file, 'avatars', user.id);
+      const bucket = file.type.startsWith('video/') ? 'videos' : 'avatars';
+      const avatarUrl = await uploadImage(file, bucket, user.id);
 
       const { error } = await supabase
         .from("profiles")
@@ -372,19 +373,35 @@ const Profile = () => {
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div className="flex flex-col md:flex-row items-center md:items-end gap-4">
                   <div className="relative">
-                    <Avatar 
-                      className="h-32 w-32 border-4 border-card cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => setShowAvatarViewer(true)}
-                    >
-                      <AvatarImage src={profile?.avatar_url || ""} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
-                        {profile?.username[0].toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    {profile?.avatar_url?.endsWith('.mp4') || profile?.avatar_url?.endsWith('.MP4') ? (
+                      <div 
+                        className="h-32 w-32 border-4 border-card rounded-full overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setShowAvatarViewer(true)}
+                      >
+                        <video
+                          src={profile.avatar_url}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <Avatar 
+                        className="h-32 w-32 border-4 border-card cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setShowAvatarViewer(true)}
+                      >
+                        <AvatarImage src={profile?.avatar_url || ""} />
+                        <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
+                          {profile?.username[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
                     <input
                       ref={avatarInputRef}
                       type="file"
-                      accept="image/*"
+                      accept="image/*,video/mp4"
                       className="hidden"
                       onChange={handleAvatarUpload}
                     />

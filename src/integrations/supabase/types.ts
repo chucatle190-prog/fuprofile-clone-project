@@ -183,6 +183,39 @@ export type Database = {
           },
         ]
       }
+      daily_tasks: {
+        Row: {
+          created_at: string | null
+          games_played: number | null
+          id: string
+          messages_sent: boolean | null
+          post_created: boolean | null
+          task_date: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          games_played?: number | null
+          id?: string
+          messages_sent?: boolean | null
+          post_created?: boolean | null
+          task_date?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          games_played?: number | null
+          id?: string
+          messages_sent?: boolean | null
+          post_created?: boolean | null
+          task_date?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       friendships: {
         Row: {
           created_at: string | null

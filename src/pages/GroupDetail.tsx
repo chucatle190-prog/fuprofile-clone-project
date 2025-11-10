@@ -9,7 +9,7 @@ import MobileNav from "@/components/MobileNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, MessageSquare, Gamepad2, ArrowLeft, Trophy } from "lucide-react";
+import { Users, MessageSquare, Gamepad2, ArrowLeft, Trophy, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import SpinWheel from "@/components/games/SpinWheel";
 import WordPuzzle from "@/components/games/WordPuzzle";
@@ -17,9 +17,10 @@ import GameLeaderboard from "@/components/games/GameLeaderboard";
 import QuizForSpins from "@/components/games/QuizForSpins";
 import UserLevel from "@/components/profile/UserLevel";
 import UserBadges from "@/components/profile/UserBadges";
+import DailyTasks from "@/components/profile/DailyTasks";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Edit2, Trash2 } from "lucide-react";
+import { Send, Edit2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Group {
@@ -27,6 +28,7 @@ interface Group {
   name: string;
   description: string | null;
   cover_url: string | null;
+  created_by: string;
 }
 
 const GroupDetail = () => {
@@ -212,6 +214,33 @@ const GroupDetail = () => {
     }
   };
 
+  const deleteGroup = async () => {
+    if (!groupId || !user || !group) return;
+    
+    if (group.created_by !== user.id) {
+      toast.error("Chỉ chủ nhóm mới có thể xóa nhóm");
+      return;
+    }
+
+    if (!confirm("Bạn có chắc chắn muốn xóa nhóm này? Hành động này không thể hoàn tác.")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("groups")
+        .delete()
+        .eq("id", groupId);
+
+      if (error) throw error;
+      toast.success("Đã xóa nhóm thành công");
+      navigate("/groups");
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      toast.error("Không thể xóa nhóm");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
@@ -230,14 +259,26 @@ const GroupDetail = () => {
         <main className="flex-1 container max-w-6xl mx-auto px-4 py-6 mb-16 md:mb-0">
           {/* Header */}
           <div className="mb-6">
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/groups")}
-              className="mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Quay lại
-            </Button>
+            <div className="flex items-center justify-between mb-4">
+              <Button
+                variant="ghost"
+                onClick={() => navigate("/groups")}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Quay lại
+              </Button>
+              
+              {user && group && group.created_by === user.id && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={deleteGroup}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Xóa nhóm
+                </Button>
+              )}
+            </div>
 
             <Card>
               <CardContent className="p-6">
@@ -465,6 +506,7 @@ const GroupDetail = () => {
             <TabsContent value="profile" className="space-y-4">
               {user && (
                 <>
+                  <DailyTasks userId={user.id} />
                   <UserLevel userId={user.id} />
                   <UserBadges userId={user.id} />
                 </>
