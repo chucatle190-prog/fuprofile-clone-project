@@ -194,9 +194,11 @@ const ChatWindow = ({ conversationId, currentUserId, otherUser }: ChatWindowProp
         {messages.map((message) => (
           <MessageBubble
             key={message.id}
+            messageId={message.id}
             content={message.content}
             createdAt={message.created_at}
             isOwn={message.sender_id === currentUserId}
+            currentUserId={currentUserId}
             senderName={displayName}
             senderAvatar={otherUser?.avatar_url}
           />

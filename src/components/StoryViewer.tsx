@@ -5,6 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+const REACTION_EMOJIS = ["😍", "😂", "😢", "👍", "❤️"];
+
 interface Story {
   id: string;
   user_id: string;
@@ -32,11 +34,14 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [reactions, setReactions] = useState<{ [key: string]: { emoji: string; count: number }[] }>({});
+  const [userReaction, setUserReaction] = useState<string | null>(null);
   const currentStory = stories[currentIndex];
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setProgress(0);
+    fetchReactions();
     
     // Play music if available
     if (currentStory?.music_url && audioRef.current) {
@@ -56,12 +61,28 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
       });
     }, 100);
 
+    // Subscribe to reaction changes
+    const channel = supabase
+      .channel(`story_reactions:${currentStory?.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "story_reactions",
+          filter: `story_id=eq.${currentStory?.id}`,
+        },
+        () => fetchReactions()
+      )
+      .subscribe();
+
     return () => {
       clearInterval(interval);
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
       }
+      supabase.removeChannel(channel);
     };
   }, [currentIndex]);
 
@@ -82,6 +103,56 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
   const handlePrevious = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
+    }
+  };
+
+  const fetchReactions = async () => {
+    if (!currentStory) return;
+
+    const { data, error } = await supabase
+      .from("story_reactions")
+      .select("reaction_type, user_id")
+      .eq("story_id", currentStory.id);
+
+    if (!error && data) {
+      const grouped = data.reduce((acc: { [key: string]: number }, r) => {
+        acc[r.reaction_type] = (acc[r.reaction_type] || 0) + 1;
+        return acc;
+      }, {});
+
+      const reactionList = Object.entries(grouped).map(([emoji, count]) => ({
+        emoji,
+        count: count as number,
+      }));
+
+      setReactions({ [currentStory.id]: reactionList });
+
+      const userReactionData = data.find((r) => r.user_id === currentUserId);
+      setUserReaction(userReactionData?.reaction_type || null);
+    }
+  };
+
+  const handleReaction = async (emoji: string) => {
+    if (!currentUserId || !currentStory) return;
+
+    if (userReaction === emoji) {
+      // Remove reaction
+      await supabase
+        .from("story_reactions")
+        .delete()
+        .eq("story_id", currentStory.id)
+        .eq("user_id", currentUserId);
+      setUserReaction(null);
+    } else {
+      // Add or update reaction
+      await supabase
+        .from("story_reactions")
+        .upsert({
+          story_id: currentStory.id,
+          user_id: currentUserId,
+          reaction_type: emoji,
+        });
+      setUserReaction(emoji);
     }
   };
 
@@ -182,9 +253,41 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
         </div>
       </div>
 
+      {/* Reactions */}
+      {currentUserId && (
+        <div className="absolute bottom-4 left-4 right-4 z-10">
+          <div className="flex items-center justify-center gap-2 bg-black/50 backdrop-blur-sm rounded-full p-3">
+            {REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => handleReaction(emoji)}
+                className={`text-2xl transition-transform hover:scale-125 ${
+                  userReaction === emoji ? "scale-125" : ""
+                }`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+          {reactions[currentStory.id]?.length > 0 && (
+            <div className="flex items-center justify-center gap-2 mt-2">
+              {reactions[currentStory.id].map((r) => (
+                <div
+                  key={r.emoji}
+                  className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1"
+                >
+                  <span className="text-lg">{r.emoji}</span>
+                  <span className="text-white text-sm font-semibold">{r.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Music info */}
       {currentStory.music_name && (
-        <div className="absolute bottom-20 left-4 right-4 z-10">
+        <div className="absolute bottom-32 left-4 right-4 z-10">
           <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3 flex items-center gap-3">
             <div className="w-10 h-10 rounded bg-white/20 flex items-center justify-center">
               <Music className="h-5 w-5 text-white" />
