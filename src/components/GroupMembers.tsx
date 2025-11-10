@@ -4,9 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Users, UserMinus, Crown } from "lucide-react";
+import { Users, UserMinus, Crown, Shield, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 interface Member {
   id: string;
@@ -134,6 +140,30 @@ const GroupMembers = ({ groupId, currentUserId, userRole }: GroupMembersProps) =
     }
   };
 
+  const changeRole = async (memberId: string, newRole: 'admin' | 'moderator' | 'member') => {
+    try {
+      const { error } = await supabase
+        .from("group_members")
+        .update({ role: newRole })
+        .eq("id", memberId);
+
+      if (error) throw error;
+
+      toast.success(`Đã thay đổi vai trò thành ${getRoleName(newRole)}`);
+    } catch (error) {
+      console.error("Error changing role:", error);
+      toast.error("Không thể thay đổi vai trò");
+    }
+  };
+
+  const getRoleName = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Quản trị viên';
+      case 'moderator': return 'Điều hành viên';
+      default: return 'Thành viên';
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -156,7 +186,7 @@ const GroupMembers = ({ groupId, currentUserId, userRole }: GroupMembersProps) =
         <div className="space-y-3">
           {members.map((member) => {
             const isCurrentUser = member.user_id === currentUserId;
-            const canRemove = userRole === "admin" && !isCurrentUser;
+            const canManage = userRole === "admin" && !isCurrentUser;
 
             return (
               <div
@@ -184,11 +214,17 @@ const GroupMembers = ({ groupId, currentUserId, userRole }: GroupMembersProps) =
                       {member.role === "admin" && (
                         <Badge variant="default" className="text-xs flex items-center gap-1">
                           <Crown className="h-3 w-3" />
-                          Admin
+                          {getRoleName("admin")}
+                        </Badge>
+                      )}
+                      {member.role === "moderator" && (
+                        <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                          <Shield className="h-3 w-3" />
+                          {getRoleName("moderator")}
                         </Badge>
                       )}
                       {isCurrentUser && (
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="outline" className="text-xs">
                           Bạn
                         </Badge>
                       )}
@@ -201,14 +237,35 @@ const GroupMembers = ({ groupId, currentUserId, userRole }: GroupMembersProps) =
                     </p>
                   </div>
                 </div>
-                {canRemove && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => removeMember(member.id, member.user_id)}
-                  >
-                    <UserMinus className="h-4 w-4" />
-                  </Button>
+                {canManage && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="ghost">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => changeRole(member.id, 'admin')}>
+                        <Crown className="h-4 w-4 mr-2" />
+                        Đặt làm Admin
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => changeRole(member.id, 'moderator')}>
+                        <Shield className="h-4 w-4 mr-2" />
+                        Đặt làm Moderator
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => changeRole(member.id, 'member')}>
+                        <Users className="h-4 w-4 mr-2" />
+                        Đặt làm Thành viên
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => removeMember(member.id, member.user_id)}
+                        className="text-destructive"
+                      >
+                        <UserMinus className="h-4 w-4 mr-2" />
+                        Xóa khỏi nhóm
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
             );

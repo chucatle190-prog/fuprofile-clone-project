@@ -419,16 +419,18 @@ const GroupDetail = () => {
                                     </span>
                                   )}
 
-                                  {isOwn && (
+                                  {(isOwn || userRole === 'admin' || userRole === 'moderator') && (
                                     <div className="absolute -right-20 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-7 w-7"
-                                        onClick={() => startEdit(message)}
-                                      >
-                                        <Edit2 className="h-3 w-3" />
-                                      </Button>
+                                      {isOwn && (
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-7 w-7"
+                                          onClick={() => startEdit(message)}
+                                        >
+                                          <Edit2 className="h-3 w-3" />
+                                        </Button>
+                                      )}
                                       <Button
                                         size="icon"
                                         variant="ghost"

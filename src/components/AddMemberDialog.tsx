@@ -6,6 +6,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Search, UserPlus } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 interface AddMemberDialogProps {
   open: boolean;
@@ -28,6 +35,7 @@ const AddMemberDialog = ({ open, onOpenChange, groupId, currentUserId }: AddMemb
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState<'member' | 'moderator' | 'admin'>('member');
 
   useEffect(() => {
     if (open) {
@@ -109,12 +117,12 @@ const AddMemberDialog = ({ open, onOpenChange, groupId, currentUserId }: AddMemb
       const { error } = await supabase.from("group_members").insert({
         group_id: groupId,
         user_id: friendId,
-        role: "member",
+        role: selectedRole,
       });
 
       if (error) throw error;
 
-      toast.success("Đã thêm thành viên");
+      toast.success(`Đã thêm thành viên với vai trò ${getRoleName(selectedRole)}`);
       
       // Update local state
       setFriends((prev) =>
@@ -125,6 +133,14 @@ const AddMemberDialog = ({ open, onOpenChange, groupId, currentUserId }: AddMemb
       toast.error("Không thể thêm thành viên");
     } finally {
       setAdding(null);
+    }
+  };
+
+  const getRoleName = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Quản trị viên';
+      case 'moderator': return 'Điều hành viên';
+      default: return 'Thành viên';
     }
   };
 
@@ -144,6 +160,20 @@ const AddMemberDialog = ({ open, onOpenChange, groupId, currentUserId }: AddMemb
               placeholder="Tìm bạn bè..."
               className="pl-10"
             />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Vai trò</label>
+            <Select value={selectedRole} onValueChange={(value: any) => setSelectedRole(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn vai trò" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="member">Thành viên</SelectItem>
+                <SelectItem value="moderator">Điều hành viên</SelectItem>
+                <SelectItem value="admin">Quản trị viên</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="max-h-96 overflow-y-auto space-y-2">
