@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from "react";
-import { X, ChevronLeft, ChevronRight, Trash2, Music, Volume2, VolumeX } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Trash2, Music, Volume2, VolumeX, Smile } from "lucide-react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
-const REACTION_EMOJIS = ["😍", "😂", "😢", "👍", "❤️"];
+const REACTIONS = ["❤️", "😂", "😢", "😍", "👍"];
 
 interface Story {
   id: string;
@@ -34,7 +35,7 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
-  const [reactions, setReactions] = useState<{ [key: string]: { emoji: string; count: number }[] }>({});
+  const [reactions, setReactions] = useState<{ [key: string]: number }>({});
   const [userReaction, setUserReaction] = useState<string | null>(null);
   const currentStory = stories[currentIndex];
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -61,28 +62,12 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
       });
     }, 100);
 
-    // Subscribe to reaction changes
-    const channel = supabase
-      .channel(`story_reactions:${currentStory?.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "story_reactions",
-          filter: `story_id=eq.${currentStory?.id}`,
-        },
-        () => fetchReactions()
-      )
-      .subscribe();
-
     return () => {
       clearInterval(interval);
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
       }
-      supabase.removeChannel(channel);
     };
   }, [currentIndex]);
 
@@ -92,43 +77,27 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
     }
   }, [isMuted]);
 
-  const handleNext = () => {
-    if (currentIndex < stories.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      onClose();
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
-  };
-
   const fetchReactions = async () => {
     if (!currentStory) return;
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("story_reactions")
       .select("reaction_type, user_id")
       .eq("story_id", currentStory.id);
 
-    if (!error && data) {
-      const grouped = data.reduce((acc: { [key: string]: number }, r) => {
-        acc[r.reaction_type] = (acc[r.reaction_type] || 0) + 1;
-        return acc;
-      }, {});
+    if (data) {
+      const reactionCounts: { [key: string]: number } = {};
+      let myReaction: string | null = null;
 
-      const reactionList = Object.entries(grouped).map(([emoji, count]) => ({
-        emoji,
-        count: count as number,
-      }));
+      data.forEach((r) => {
+        reactionCounts[r.reaction_type] = (reactionCounts[r.reaction_type] || 0) + 1;
+        if (r.user_id === currentUserId) {
+          myReaction = r.reaction_type;
+        }
+      });
 
-      setReactions({ [currentStory.id]: reactionList });
-
-      const userReactionData = data.find((r) => r.user_id === currentUserId);
-      setUserReaction(userReactionData?.reaction_type || null);
+      setReactions(reactionCounts);
+      setUserReaction(myReaction);
     }
   };
 
@@ -142,7 +111,12 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
         .delete()
         .eq("story_id", currentStory.id)
         .eq("user_id", currentUserId);
+      
       setUserReaction(null);
+      setReactions(prev => ({
+        ...prev,
+        [emoji]: Math.max((prev[emoji] || 1) - 1, 0)
+      }));
     } else {
       // Add or update reaction
       await supabase
@@ -152,7 +126,27 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
           user_id: currentUserId,
           reaction_type: emoji,
         });
+
       setUserReaction(emoji);
+      setReactions(prev => ({
+        ...prev,
+        ...(userReaction ? { [userReaction]: Math.max((prev[userReaction] || 1) - 1, 0) } : {}),
+        [emoji]: (prev[emoji] || 0) + 1
+      }));
+    }
+  };
+
+  const handleNext = () => {
+    if (currentIndex < stories.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      onClose();
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
     }
   };
 
@@ -254,40 +248,53 @@ const StoryViewer = ({ stories, initialIndex, onClose, currentUserId, onStoryDel
       </div>
 
       {/* Reactions */}
-      {currentUserId && (
-        <div className="absolute bottom-4 left-4 right-4 z-10">
-          <div className="flex items-center justify-center gap-2 bg-black/50 backdrop-blur-sm rounded-full p-3">
-            {REACTION_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => handleReaction(emoji)}
-                className={`text-2xl transition-transform hover:scale-125 ${
-                  userReaction === emoji ? "scale-125" : ""
-                }`}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-          {reactions[currentStory.id]?.length > 0 && (
-            <div className="flex items-center justify-center gap-2 mt-2">
-              {reactions[currentStory.id].map((r) => (
-                <div
-                  key={r.emoji}
-                  className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1"
+      <div className="absolute bottom-24 left-4 right-4 z-10 flex items-center justify-between">
+        <div className="flex gap-2">
+          {Object.entries(reactions).filter(([_, count]) => count > 0).map(([emoji, count]) => (
+            <div key={emoji} className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
+              <span className="text-lg">{emoji}</span>
+              <span className="text-white text-xs font-semibold">{count}</span>
+            </div>
+          ))}
+        </div>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="bg-black/50 backdrop-blur-sm hover:bg-black/70 text-white rounded-full"
+            >
+              {userReaction ? (
+                <span className="text-xl">{userReaction}</span>
+              ) : (
+                <Smile className="h-5 w-5" />
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-2" align="end">
+            <div className="flex gap-1">
+              {REACTIONS.map((emoji) => (
+                <Button
+                  key={emoji}
+                  variant="ghost"
+                  size="icon"
+                  className={`text-2xl hover:scale-125 transition-transform ${
+                    userReaction === emoji ? "bg-accent" : ""
+                  }`}
+                  onClick={() => handleReaction(emoji)}
                 >
-                  <span className="text-lg">{r.emoji}</span>
-                  <span className="text-white text-sm font-semibold">{r.count}</span>
-                </div>
+                  {emoji}
+                </Button>
               ))}
             </div>
-          )}
-        </div>
-      )}
+          </PopoverContent>
+        </Popover>
+      </div>
 
       {/* Music info */}
       {currentStory.music_name && (
-        <div className="absolute bottom-32 left-4 right-4 z-10">
+        <div className="absolute bottom-48 left-4 right-4 z-10">
           <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3 flex items-center gap-3">
             <div className="w-10 h-10 rounded bg-white/20 flex items-center justify-center">
               <Music className="h-5 w-5 text-white" />
