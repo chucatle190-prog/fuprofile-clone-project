@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { toast } from "sonner";
-import { Bitcoin } from "lucide-react";
+import { Bitcoin, Wallet, Ticket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMetaMask } from "@/hooks/useMetaMask";
 
 const PRIZES = [
   { id: 1, value: 1, color: "#FFD700", label: "1 BTC" },
@@ -20,13 +21,78 @@ interface SpinWheelProps {
 
 const SpinWheel = ({ groupId }: SpinWheelProps) => {
   const { user } = useAuth();
+  const { account, connectWallet } = useMetaMask();
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<number | null>(null);
+  const [remainingSpins, setRemainingSpins] = useState<number>(5);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user && groupId) {
+      fetchRemainingSpins();
+    }
+  }, [user, groupId]);
+
+  const fetchRemainingSpins = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("user_game_spins")
+        .select("remaining_spins")
+        .eq("user_id", user.id)
+        .eq("group_id", groupId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setRemainingSpins(data.remaining_spins);
+      } else {
+        // Initialize with default 5 spins
+        const { error: insertError } = await supabase
+          .from("user_game_spins")
+          .insert({
+            user_id: user.id,
+            group_id: groupId,
+            remaining_spins: 5,
+          });
+
+        if (!insertError) {
+          setRemainingSpins(5);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching spins:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const spinWheel = async () => {
-    if (spinning || !user) return;
+    if (spinning || !user || remainingSpins <= 0) {
+      if (remainingSpins <= 0) {
+        toast.error("Bạn đã hết lượt quay! Hoàn thành quiz để nhận thêm lượt.");
+      }
+      return;
+    }
 
+    // Update remaining spins first
+    const newSpins = remainingSpins - 1;
+    const { error: updateError } = await supabase
+      .from("user_game_spins")
+      .update({ remaining_spins: newSpins })
+      .eq("user_id", user.id)
+      .eq("group_id", groupId);
+
+    if (updateError) {
+      console.error("Error updating spins:", updateError);
+      toast.error("Có lỗi xảy ra!");
+      return;
+    }
+
+    setRemainingSpins(newSpins);
     setSpinning(true);
     setResult(null);
 
@@ -43,7 +109,7 @@ const SpinWheel = ({ groupId }: SpinWheelProps) => {
     setTimeout(async () => {
       setSpinning(false);
       setResult(prize.value);
-      
+
       // Save score to database
       const { error: scoreError } = await supabase.from("game_scores").insert({
         user_id: user.id,
@@ -54,6 +120,32 @@ const SpinWheel = ({ groupId }: SpinWheelProps) => {
 
       if (scoreError) {
         console.error("Error saving score:", scoreError);
+      }
+
+      // Update level and experience
+      const { data: userLevel } = await supabase
+        .from("user_levels")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const newXP = (userLevel?.experience_points || 0) + prize.value;
+      const newLevel = Math.floor(newXP / 100) + 1;
+
+      if (userLevel) {
+        await supabase
+          .from("user_levels")
+          .update({
+            experience_points: newXP,
+            level: newLevel,
+          })
+          .eq("id", userLevel.id);
+      } else {
+        await supabase.from("user_levels").insert({
+          user_id: user.id,
+          experience_points: newXP,
+          level: newLevel,
+        });
       }
 
       // Create notification
@@ -70,11 +162,27 @@ const SpinWheel = ({ groupId }: SpinWheelProps) => {
         console.error("Error creating notification:", notifError);
       }
 
-      toast.success(`🎉 Chúc mừng! Bạn trúng ${prize.label}!`, {
-        duration: 5000,
-      });
+      // If connected to MetaMask, show claim option
+      if (account) {
+        toast.success(
+          `🎉 Chúc mừng! Bạn trúng ${prize.label}! Phần thưởng sẽ được gửi đến ví ${account.slice(0, 6)}...${account.slice(-4)}`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.success(`🎉 Chúc mừng! Bạn trúng ${prize.label}!`, {
+          duration: 5000,
+        });
+      }
     }, 4000);
   };
+
+  if (loading) {
+    return (
+      <Card className="p-6">
+        <p className="text-center">Đang tải...</p>
+      </Card>
+    );
+  }
 
   return (
     <Card className="p-6">
@@ -84,6 +192,25 @@ const SpinWheel = ({ groupId }: SpinWheelProps) => {
           Vòng Quay Trúng Thưởng
         </h3>
         <p className="text-muted-foreground">Quay để nhận Bitcoin!</p>
+
+        <div className="flex items-center justify-center gap-4 mt-4">
+          <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg">
+            <Ticket className="h-5 w-5 text-primary" />
+            <span className="font-bold">{remainingSpins} lượt còn lại</span>
+          </div>
+
+          {!account ? (
+            <Button onClick={connectWallet} variant="outline" size="sm">
+              <Wallet className="h-4 w-4 mr-2" />
+              Kết nối MetaMask
+            </Button>
+          ) : (
+            <div className="text-sm text-muted-foreground">
+              <Wallet className="h-4 w-4 inline mr-1" />
+              {account.slice(0, 6)}...{account.slice(-4)}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col items-center gap-6">

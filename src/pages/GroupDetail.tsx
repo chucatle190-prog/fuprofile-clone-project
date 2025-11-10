@@ -14,6 +14,9 @@ import { toast } from "sonner";
 import SpinWheel from "@/components/games/SpinWheel";
 import WordPuzzle from "@/components/games/WordPuzzle";
 import GameLeaderboard from "@/components/games/GameLeaderboard";
+import QuizForSpins from "@/components/games/QuizForSpins";
+import UserLevel from "@/components/profile/UserLevel";
+import UserBadges from "@/components/profile/UserBadges";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Edit2, Trash2 } from "lucide-react";
@@ -37,6 +40,8 @@ const GroupDetail = () => {
   const [editingMessage, setEditingMessage] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -253,14 +258,18 @@ const GroupDetail = () => {
 
           {/* Tabs */}
           <Tabs defaultValue="chat" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="chat">
                 <MessageSquare className="h-4 w-4 mr-2" />
-                Chat nhóm
+                Chat
               </TabsTrigger>
               <TabsTrigger value="games">
                 <Gamepad2 className="h-4 w-4 mr-2" />
-                Mini Games
+                Games
+              </TabsTrigger>
+              <TabsTrigger value="profile">
+                <Users className="h-4 w-4 mr-2" />
+                Hồ sơ
               </TabsTrigger>
             </TabsList>
 
@@ -390,17 +399,41 @@ const GroupDetail = () => {
             <TabsContent value="games" className="space-y-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold">🎮 Mini Games</h2>
-                <Button
-                  variant={showLeaderboard ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowLeaderboard(!showLeaderboard)}
-                >
-                  <Trophy className="h-4 w-4 mr-2" />
-                  {showLeaderboard ? "Chơi game" : "Bảng xếp hạng"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant={showQuiz ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setShowQuiz(!showQuiz);
+                      setShowLeaderboard(false);
+                    }}
+                  >
+                    {showQuiz ? "Ẩn Quiz" : "Quiz nhận lượt"}
+                  </Button>
+                  <Button
+                    variant={showLeaderboard ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setShowLeaderboard(!showLeaderboard);
+                      setShowQuiz(false);
+                    }}
+                  >
+                    <Trophy className="h-4 w-4 mr-2" />
+                    {showLeaderboard ? "Chơi game" : "Bảng xếp hạng"}
+                  </Button>
+                </div>
               </div>
 
-              {showLeaderboard ? (
+              {showQuiz ? (
+                <QuizForSpins
+                  groupId={groupId!}
+                  userId={user?.id || ""}
+                  onComplete={() => {
+                    setShowQuiz(false);
+                    window.location.reload();
+                  }}
+                />
+              ) : showLeaderboard ? (
                 <Tabs defaultValue="spin" className="w-full">
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="spin">Vòng Quay</TabsTrigger>
@@ -426,6 +459,15 @@ const GroupDetail = () => {
                     <WordPuzzle groupId={groupId!} />
                   </TabsContent>
                 </Tabs>
+              )}
+            </TabsContent>
+
+            <TabsContent value="profile" className="space-y-4">
+              {user && (
+                <>
+                  <UserLevel userId={user.id} />
+                  <UserBadges userId={user.id} />
+                </>
               )}
             </TabsContent>
           </Tabs>
