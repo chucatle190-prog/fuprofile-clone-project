@@ -11,6 +11,7 @@ import Messages from "./pages/Messages";
 import Notifications from "./pages/Notifications";
 import Friends from "./pages/Friends";
 import Groups from "./pages/Groups";
+import GroupDetail from "./pages/GroupDetail";
 import Settings from "./pages/Settings";
 import Marketplace from "./pages/Marketplace";
 import MarketplaceItemDetail from "./pages/MarketplaceItemDetail";
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/friends" element={<Friends />} />
           <Route path="/groups" element={<Groups />} />
+          <Route path="/groups/:groupId" element={<GroupDetail />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/marketplace/:id" element={<MarketplaceItemDetail />} />
           <Route path="/transactions" element={<TransactionHistory />} />

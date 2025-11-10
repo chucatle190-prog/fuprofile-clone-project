@@ -224,6 +224,47 @@ export type Database = {
           },
         ]
       }
+      group_posts: {
+        Row: {
+          content: string
+          created_at: string | null
+          group_id: string
+          id: string
+          image_url: string | null
+          updated_at: string | null
+          user_id: string
+          video_url: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          group_id: string
+          id?: string
+          image_url?: string | null
+          updated_at?: string | null
+          user_id: string
+          video_url?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          group_id?: string
+          id?: string
+          image_url?: string | null
+          updated_at?: string | null
+          user_id?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_posts_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       groups: {
         Row: {
           cover_url: string | null
@@ -369,6 +410,8 @@ export type Database = {
           content: string
           conversation_id: string
           created_at: string | null
+          deleted_at: string | null
+          edited_at: string | null
           id: string
           is_read: boolean | null
           sender_id: string
@@ -377,6 +420,8 @@ export type Database = {
           content: string
           conversation_id: string
           created_at?: string | null
+          deleted_at?: string | null
+          edited_at?: string | null
           id?: string
           is_read?: boolean | null
           sender_id: string
@@ -385,6 +430,8 @@ export type Database = {
           content?: string
           conversation_id?: string
           created_at?: string | null
+          deleted_at?: string | null
+          edited_at?: string | null
           id?: string
           is_read?: boolean | null
           sender_id?: string

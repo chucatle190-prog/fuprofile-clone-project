@@ -25,12 +25,16 @@ const GroupCard = ({ group, currentUserId, onManage }: GroupCardProps) => {
   const [showAddMember, setShowAddMember] = useState(false);
   const isAdmin = group.user_role === "admin" || group.created_by === currentUserId;
 
+  const handleCardClick = () => {
+    navigate(`/groups/${group.id}`);
+  };
+
   return (
     <>
       <Card className="overflow-hidden hover:shadow-lg transition-shadow">
         <div
           className="h-32 bg-gradient-to-br from-primary/20 to-accent/20 relative cursor-pointer"
-          onClick={() => navigate(`/groups/${group.id}`)}
+          onClick={handleCardClick}
         >
           {group.cover_url && (
             <img
@@ -44,7 +48,7 @@ const GroupCard = ({ group, currentUserId, onManage }: GroupCardProps) => {
           <div className="flex items-start justify-between mb-2">
             <h3
               className="font-semibold text-lg cursor-pointer hover:text-primary"
-              onClick={() => navigate(`/groups/${group.id}`)}
+              onClick={handleCardClick}
             >
               {group.name}
             </h3>
@@ -54,7 +58,10 @@ const GroupCard = ({ group, currentUserId, onManage }: GroupCardProps) => {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => setShowAddMember(true)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAddMember(true);
+                  }}
                 >
                   <UserPlus className="h-4 w-4" />
                 </Button>
@@ -64,7 +71,10 @@ const GroupCard = ({ group, currentUserId, onManage }: GroupCardProps) => {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => onManage(group.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onManage(group.id);
+                  }}
                 >
                   <Settings className="h-4 w-4" />
                 </Button>
