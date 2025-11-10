@@ -146,6 +146,63 @@ const Wallet = () => {
     }
   };
 
+  const disconnectWallet = async () => {
+    if (!user) return;
+    
+    try {
+      await supabase
+        .from("user_wallets")
+        .update({ wallet_address: null })
+        .eq("user_id", user.id);
+
+      setWallet({ ...wallet!, wallet_address: null });
+
+      toast({
+        title: "Đã ngắt kết nối",
+        description: "Ví đã được ngắt kết nối",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Detect MetaMask account changes
+  useEffect(() => {
+    if (typeof window.ethereum !== "undefined") {
+      const handleAccountsChanged = async (accounts: string[]) => {
+        if (accounts.length === 0) {
+          // User disconnected all accounts
+          await disconnectWallet();
+        } else if (accounts[0] !== wallet?.wallet_address && user) {
+          // User switched to a different account
+          const newAddress = accounts[0];
+          
+          await supabase
+            .from("user_wallets")
+            .update({ wallet_address: newAddress })
+            .eq("user_id", user.id);
+
+          setWallet({ ...wallet!, wallet_address: newAddress });
+
+          toast({
+            title: "Đã đổi ví",
+            description: `Đã chuyển sang: ${newAddress.slice(0, 6)}...${newAddress.slice(-4)}`,
+          });
+        }
+      };
+
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+
+      return () => {
+        window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+      };
+    }
+  }, [wallet?.wallet_address, user]);
+
   const claimReward = async () => {
     if (!user) return;
     
@@ -287,8 +344,18 @@ const Wallet = () => {
               ) : (
                 <>
                   <div className="bg-secondary/50 rounded-lg p-4">
-                    <Label className="text-sm text-muted-foreground">Địa chỉ ví</Label>
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-sm text-muted-foreground">Địa chỉ ví</Label>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={disconnectWallet}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        Disconnect
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
                       <code className="flex-1 text-sm bg-background px-3 py-2 rounded">
                         {wallet.wallet_address}
                       </code>
@@ -296,6 +363,9 @@ const Wallet = () => {
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Bạn có thể đổi ví bằng cách switch account trong MetaMask
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
