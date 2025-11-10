@@ -145,6 +145,48 @@ const Wallet = () => {
     }
   };
 
+  const claimReward = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke('claim-reward', {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: {
+          amount: 10,
+          rewardType: 'daily_claim',
+          description: 'Nhận thưởng hàng ngày'
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Thành công!",
+          description: data.message,
+        });
+        
+        // Refresh wallet data
+        await fetchWallet(user.id);
+      } else {
+        throw new Error(data.error || 'Có lỗi xảy ra');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể nhận thưởng",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Navbar user={user} />
@@ -220,7 +262,12 @@ const Wallet = () => {
                       <Download className="h-5 w-5 mb-2" />
                       <span>Receive</span>
                     </Button>
-                    <Button variant="outline" className="flex-col h-auto py-4">
+                    <Button 
+                      variant="outline" 
+                      className="flex-col h-auto py-4"
+                      onClick={claimReward}
+                      disabled={loading}
+                    >
                       <Gift className="h-5 w-5 mb-2" />
                       <span>Claim</span>
                     </Button>
