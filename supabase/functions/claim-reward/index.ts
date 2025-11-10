@@ -42,15 +42,39 @@ Deno.serve(async (req) => {
 
     console.log(`Processing claim reward for user ${user.id}: ${rewardAmount} F.U Token`);
 
-    // Get current wallet
-    const { data: wallet, error: walletError } = await supabase
+    // Get or create user wallet
+    let { data: wallet, error: walletError } = await supabase
       .from('user_wallets')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (walletError) {
-      throw new Error('Không tìm thấy ví người dùng');
+      throw new Error('Lỗi khi truy vấn ví người dùng');
+    }
+
+    // Create wallet if doesn't exist
+    if (!wallet) {
+      console.log(`Creating new wallet for user ${user.id}`);
+      const { data: newWallet, error: createError } = await supabase
+        .from('user_wallets')
+        .insert({
+          user_id: user.id,
+          camly_balance: 0,
+          total_reward_camly: 0,
+          bnb_balance: 0,
+          usdt_balance: 0,
+          btc_balance: 0,
+          total_usd: 0,
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        throw new Error('Không thể tạo ví người dùng');
+      }
+      
+      wallet = newWallet;
     }
 
     // Calculate new balances

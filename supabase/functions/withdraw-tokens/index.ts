@@ -64,10 +64,14 @@ Deno.serve(async (req) => {
       .from('user_wallets')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (walletError || !wallet) {
-      throw new Error('Không tìm thấy ví người dùng');
+    if (walletError) {
+      throw new Error('Lỗi khi truy vấn ví người dùng');
+    }
+
+    if (!wallet) {
+      throw new Error('Không tìm thấy ví người dùng. Vui lòng thử claim reward trước.');
     }
 
     if (!wallet.wallet_address) {
