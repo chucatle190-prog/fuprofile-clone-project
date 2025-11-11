@@ -323,6 +323,11 @@ export const PrincessRescue = ({
   };
 
   const findPossibleMoves = useCallback(() => {
+    // Guard: Check if grid is properly initialized
+    if (!grid || grid.length !== GRID_SIZE || !grid[0] || grid[0].length !== GRID_SIZE) {
+      return;
+    }
+    
     const moves = new Set<string>();
     
     for (let row = 0; row < GRID_SIZE; row++) {
