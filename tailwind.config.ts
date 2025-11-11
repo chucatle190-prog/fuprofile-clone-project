@@ -64,11 +64,13 @@ export default {
 			},
       backgroundImage: {
         'gradient-primary': 'var(--gradient-primary)',
+        'gradient-golden': 'var(--gradient-golden)',
         'gradient-subtle': 'var(--gradient-subtle)',
       },
       boxShadow: {
         'soft': 'var(--shadow-soft)',
         'medium': 'var(--shadow-medium)',
+        'golden': 'var(--shadow-golden)',
       },
       transitionTimingFunction: {
         'smooth': 'var(--transition-smooth)',
