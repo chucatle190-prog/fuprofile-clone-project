@@ -417,6 +417,7 @@ export const PrincessRescue = ({
       if ((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)) {
         // Adjacent cells - swap
         setIsSwapping(true);
+        const prevSelectedCell = { ...selectedCell }; // Save selected cell before clearing
         const newGrid = grid.map((r) => r.map((c) => ({ ...c })));
         const temp = newGrid[selectedCell.row][selectedCell.col];
         newGrid[selectedCell.row][selectedCell.col] = newGrid[row][col];
@@ -442,12 +443,12 @@ export const PrincessRescue = ({
             });
             
             const revertGrid = newGrid.map((r) => r.map((c) => ({ ...c })));
-            const tempRevert = revertGrid[selectedCell.row][selectedCell.col];
-            revertGrid[selectedCell.row][selectedCell.col] = revertGrid[row][col];
+            const tempRevert = revertGrid[prevSelectedCell.row][prevSelectedCell.col];
+            revertGrid[prevSelectedCell.row][prevSelectedCell.col] = revertGrid[row][col];
             revertGrid[row][col] = tempRevert;
             
-            const tempIsPathRevert = revertGrid[selectedCell.row][selectedCell.col].isPath;
-            revertGrid[selectedCell.row][selectedCell.col].isPath = revertGrid[row][col].isPath;
+            const tempIsPathRevert = revertGrid[prevSelectedCell.row][prevSelectedCell.col].isPath;
+            revertGrid[prevSelectedCell.row][prevSelectedCell.col].isPath = revertGrid[row][col].isPath;
             revertGrid[row][col].isPath = tempIsPathRevert;
             
             setGrid(revertGrid);
