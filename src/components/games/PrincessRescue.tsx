@@ -173,6 +173,39 @@ export const PrincessRescue = ({
     return () => clearInterval(timer);
   }, [gameStarted, gameWon, gameLost, toast]);
 
+  const hasAnyMatch = (gridToCheck: GridCell[][]): boolean => {
+    if (!gridToCheck || gridToCheck.length !== GRID_SIZE || !gridToCheck[0] || gridToCheck[0].length !== GRID_SIZE) {
+      return false;
+    }
+    // Check horizontal matches
+    for (let row = 0; row < GRID_SIZE; row++) {
+      for (let col = 0; col < GRID_SIZE - 2; col++) {
+        const type = gridToCheck[row][col].type;
+        if (
+          type !== "rock" &&
+          gridToCheck[row][col + 1].type === type &&
+          gridToCheck[row][col + 2].type === type
+        ) {
+          return true;
+        }
+      }
+    }
+    // Check vertical matches
+    for (let col = 0; col < GRID_SIZE; col++) {
+      for (let row = 0; row < GRID_SIZE - 2; row++) {
+        const type = gridToCheck[row][col].type;
+        if (
+          type !== "rock" &&
+          gridToCheck[row + 1][col].type === type &&
+          gridToCheck[row + 2][col].type === type
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
   const checkMatches = useCallback(() => {
     // Guard: Check if grid is properly initialized
     if (!grid || grid.length !== GRID_SIZE || !grid[0] || grid[0].length !== GRID_SIZE) {
@@ -429,56 +462,57 @@ export const PrincessRescue = ({
       const rowDiff = Math.abs(selectedCell.row - row);
       const colDiff = Math.abs(selectedCell.col - col);
 
-      if ((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)) {
-        // Adjacent cells - swap
-        setIsSwapping(true);
-        const prevSelectedCell = { ...selectedCell }; // Save selected cell before clearing
-        const newGrid = grid.map((r) => r.map((c) => ({ ...c })));
-        const temp = newGrid[selectedCell.row][selectedCell.col];
-        newGrid[selectedCell.row][selectedCell.col] = newGrid[row][col];
-        newGrid[row][col] = temp;
+        if ((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)) {
+          // Adjacent cells - swap with upfront validation
+          setIsSwapping(true);
+          const prevSelectedCell = { ...selectedCell }; // Save selected cell before clearing
+          const swappedGrid = grid.map((r) => r.map((c) => ({ ...c })));
+          // Perform swap
+          const temp = swappedGrid[selectedCell.row][selectedCell.col];
+          swappedGrid[selectedCell.row][selectedCell.col] = swappedGrid[row][col];
+          swappedGrid[row][col] = temp;
+          // Keep path markers on board cells (not attached to candy)
+          const tempIsPath = swappedGrid[selectedCell.row][selectedCell.col].isPath;
+          swappedGrid[selectedCell.row][selectedCell.col].isPath = swappedGrid[row][col].isPath;
+          swappedGrid[row][col].isPath = tempIsPath;
 
-        // Preserve isPath status
-        const tempIsPath = newGrid[selectedCell.row][selectedCell.col].isPath;
-        newGrid[selectedCell.row][selectedCell.col].isPath = newGrid[row][col].isPath;
-        newGrid[row][col].isPath = tempIsPath;
-
-        setGrid(newGrid);
-        setSelectedCell(null);
-        setMoves((prev) => prev - 1);
-
-        setTimeout(() => {
-          const hasMatches = checkMatches();
-          if (!hasMatches) {
-            // Swap back if no matches
+          // Validate: does this swap create any match?
+          const validMove = hasAnyMatch(swappedGrid);
+          if (!validMove) {
             toast({
               title: "Không hợp lệ!",
               description: "Nước đi này không tạo ra match-3",
               variant: "destructive",
             });
-            
-            const revertGrid = newGrid.map((r) => r.map((c) => ({ ...c })));
-            const tempRevert = revertGrid[prevSelectedCell.row][prevSelectedCell.col];
-            revertGrid[prevSelectedCell.row][prevSelectedCell.col] = revertGrid[row][col];
-            revertGrid[row][col] = tempRevert;
-            
-            const tempIsPathRevert = revertGrid[prevSelectedCell.row][prevSelectedCell.col].isPath;
-            revertGrid[prevSelectedCell.row][prevSelectedCell.col].isPath = revertGrid[row][col].isPath;
-            revertGrid[row][col].isPath = tempIsPathRevert;
-            
-            setGrid(revertGrid);
-            setMoves((prev) => prev + 1);
-            
-            setTimeout(() => {
-              setIsSwapping(false);
-            }, 300);
-          } else {
             setIsSwapping(false);
+            setSelectedCell(null);
+            return;
           }
-        }, 300);
-      } else {
-        setSelectedCell({ row, col });
-      }
+
+          // Apply swap, then process matches
+          setGrid(swappedGrid);
+          setSelectedCell(null);
+          setMoves((prev) => prev - 1);
+
+          setTimeout(() => {
+            const hasMatchesNow = checkMatches();
+            if (!hasMatchesNow) {
+              // Extremely rare edge case if cascade changed unexpectedly; revert and refund move
+              const revertGrid = swappedGrid.map((r) => r.map((c) => ({ ...c })));
+              const tempRevert = revertGrid[prevSelectedCell.row][prevSelectedCell.col];
+              revertGrid[prevSelectedCell.row][prevSelectedCell.col] = revertGrid[row][col];
+              revertGrid[row][col] = tempRevert;
+              const tempIsPathRevert = revertGrid[prevSelectedCell.row][prevSelectedCell.col].isPath;
+              revertGrid[prevSelectedCell.row][prevSelectedCell.col].isPath = revertGrid[row][col].isPath;
+              revertGrid[row][col].isPath = tempIsPathRevert;
+              setGrid(revertGrid);
+              setMoves((prev) => prev + 1);
+            }
+            setIsSwapping(false);
+          }, 50);
+        } else {
+          setSelectedCell({ row, col });
+        }
     }
   };
 
@@ -668,11 +702,10 @@ export const PrincessRescue = ({
                         aspect-square rounded-lg transition-all duration-200
                         ${candyColors[cell.type]}
                         ${cell.isPath ? "ring-2 ring-yellow-400 ring-offset-2" : ""}
-                        ${isSelected ? "ring-4 ring-white scale-110 shadow-lg z-10" : ""}
-                        ${isAdjacentToSelected && !cell.matched && cell.type !== "rock" ? "ring-2 ring-white/50 animate-pulse" : ""}
-                        ${isPossibleMove && !isSelected ? "animate-bounce" : ""}
-                        ${cell.matched ? "opacity-0 scale-0" : "opacity-100 scale-100"}
-                        hover:scale-105 disabled:hover:scale-100 disabled:cursor-not-allowed
+                        ${isSelected ? "ring-4 ring-white shadow-lg z-10" : ""}
+                        ${isAdjacentToSelected && !cell.matched && cell.type !== "rock" ? "ring-2 ring-white/50" : ""}
+                        ${cell.matched ? "opacity-0" : "opacity-100"}
+                        disabled:cursor-not-allowed
                         flex items-center justify-center text-xl sm:text-2xl relative
                       `}
                     >
@@ -706,7 +739,7 @@ export const PrincessRescue = ({
                   <span>Chướng ngại vật</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-6 h-6 rounded bg-white/20 animate-bounce" />
+                  <div className="w-6 h-6 rounded bg-white/20" />
                   <span>Gợi ý nước đi</span>
                 </div>
               </div>
