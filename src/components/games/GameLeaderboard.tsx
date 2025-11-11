@@ -6,7 +6,7 @@ import { Trophy, Medal } from "lucide-react";
 
 interface GameLeaderboardProps {
   groupId: string;
-  gameType: "spin_wheel" | "word_puzzle" | "memory_match";
+  gameType: "spin_wheel" | "word_puzzle" | "memory_match" | "princess_rescue";
 }
 
 interface LeaderboardEntry {
