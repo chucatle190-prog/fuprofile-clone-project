@@ -72,6 +72,12 @@ export const PrincessRescue = ({
   const [gameLost, setGameLost] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
   const [possibleMoves, setPossibleMoves] = useState<Set<string>>(new Set());
+  // Characters and movement path
+  const [princePos, setPrincePos] = useState<{ row: number; col: number } | null>(null);
+  const [princessPos, setPrincessPos] = useState<{ row: number; col: number } | null>(null);
+  const [openedPath, setOpenedPath] = useState<boolean[][]>(
+    Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false))
+  );
   const { toast } = useToast();
 
   const level = levels[currentLevel - 1];
@@ -172,6 +178,73 @@ export const PrincessRescue = ({
 
     return () => clearInterval(timer);
   }, [gameStarted, gameWon, gameLost, toast]);
+
+  // Initialize characters and opened path when grid is ready
+  useEffect(() => {
+    if (!gameStarted || grid.length !== GRID_SIZE || !grid[0] || grid[0].length !== GRID_SIZE) return;
+
+    // Reset opened path map
+    setOpenedPath(Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false)));
+
+    // Prince starts near top-left on first non-rock cell
+    let start = { row: 0, col: 0 };
+    if (grid[start.row][start.col]?.type === "rock") {
+      outer: for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          if (grid[r][c].type !== "rock") { start = { row: r, col: c }; break outer; }
+        }
+      }
+    }
+    setPrincePos(start);
+
+    // Princess is placed near bottom-right on first non-rock cell
+    let end = { row: GRID_SIZE - 1, col: GRID_SIZE - 1 };
+    if (grid[end.row][end.col]?.type === "rock") {
+      outer2: for (let r = GRID_SIZE - 1; r >= 0; r--) {
+        for (let c = GRID_SIZE - 1; c >= 0; c--) {
+          if (grid[r][c].type !== "rock") { end = { row: r, col: c }; break outer2; }
+        }
+      }
+    }
+    setPrincessPos(end);
+  }, [gameStarted, grid]);
+
+  // Keyboard controls for prince movement
+  useEffect(() => {
+    if (!gameStarted || gameWon || gameLost || !princePos || !princessPos) return;
+
+    const handler = (e: KeyboardEvent) => {
+      const key = e.key;
+      let dr = 0, dc = 0;
+      if (key === "ArrowUp" || key === "w" || key === "W") dr = -1;
+      else if (key === "ArrowDown" || key === "s" || key === "S") dr = 1;
+      else if (key === "ArrowLeft" || key === "a" || key === "A") dc = -1;
+      else if (key === "ArrowRight" || key === "d" || key === "D") dc = 1;
+      else return;
+
+      e.preventDefault();
+      const nr = princePos.row + dr;
+      const nc = princePos.col + dc;
+      if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) return;
+      if (!openedPath[nr]?.[nc]) return; // can only move on opened path cells
+      if (grid[nr][nc].type === "rock") return;
+
+      const next = { row: nr, col: nc };
+      setPrincePos(next);
+
+      // Reached princess
+      if (next.row === princessPos.row && next.col === princessPos.col) {
+        setGameWon(true);
+        toast({ title: "Hoàng tử gặp công chúa! 💕", description: "Bạn đã mở đường thành công." });
+        if (groupId && userId) {
+          supabase.from("game_scores").insert({ user_id: userId, group_id: groupId, game_type: "princess_rescue", score });
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [gameStarted, gameWon, gameLost, princePos, princessPos, openedPath, grid, toast, groupId, userId, score]);
 
   const hasAnyMatch = (gridToCheck: GridCell[][]): boolean => {
     if (!gridToCheck || gridToCheck.length !== GRID_SIZE || !gridToCheck[0] || gridToCheck[0].length !== GRID_SIZE) {
@@ -285,6 +358,17 @@ export const PrincessRescue = ({
       const points = uniqueMatched.length * 100;
       setScore((prev) => prev + points);
 
+      // Mark opened path cells for movement
+      setOpenedPath((prev) => {
+        const next = prev.map((r) => [...r]);
+        uniqueMatched.forEach(({ row, col }) => {
+          if (newGrid[row][col].isPath) {
+            next[row][col] = true;
+          }
+        });
+        return next;
+      });
+
       // Check if path cells were cleared
       let pathCleared = 0;
       uniqueMatched.forEach(({ row, col }) => {
@@ -309,37 +393,28 @@ export const PrincessRescue = ({
     const newGrid = grid.map((row) => row.map((cell) => ({ ...cell })));
 
     for (let col = 0; col < GRID_SIZE; col++) {
-      let emptySpaces = 0;
-      
-      // Count empty spaces from bottom to top
+      // Collect non-matched cells from bottom to top
+      const stack: GridCell[] = [];
       for (let row = GRID_SIZE - 1; row >= 0; row--) {
-        if (newGrid[row][col].matched) {
-          emptySpaces++;
-        } else if (emptySpaces > 0) {
-          // Store isPath before moving
-          const preservedIsPath = newGrid[row + emptySpaces][col].isPath;
-          // Move cell down
-          newGrid[row + emptySpaces][col] = { ...newGrid[row][col], isPath: preservedIsPath };
-          // Clear the old position (but keep its isPath status for new candy)
-          const oldIsPath = newGrid[row][col].isPath;
+        if (!newGrid[row][col].matched) {
+          stack.push({ ...newGrid[row][col], matched: false });
+        }
+      }
+
+      // Rebuild the column from bottom to top, preserving isPath at board positions
+      for (let row = GRID_SIZE - 1; row >= 0; row--) {
+        const preservedIsPath = grid[row][col].isPath;
+        if (stack.length > 0) {
+          const cell = stack.shift()!; // take next from bottom stack
+          newGrid[row][col] = { ...cell, matched: false, isPath: preservedIsPath };
+        } else {
           newGrid[row][col] = {
             type: generateRandomCandy(),
             id: `${row}-${col}-${Date.now()}-${Math.random()}`,
             matched: false,
-            isPath: oldIsPath,
+            isPath: preservedIsPath,
           };
         }
-      }
-      
-      // Fill top cells
-      for (let row = 0; row < emptySpaces; row++) {
-        const preservedIsPath = newGrid[row][col].isPath;
-        newGrid[row][col] = {
-          type: generateRandomCandy(),
-          id: `${row}-${col}-${Date.now()}-${Math.random()}`,
-          matched: false,
-          isPath: preservedIsPath,
-        };
       }
     }
 
@@ -472,9 +547,7 @@ export const PrincessRescue = ({
           swappedGrid[selectedCell.row][selectedCell.col] = swappedGrid[row][col];
           swappedGrid[row][col] = temp;
           // Keep path markers on board cells (not attached to candy)
-          const tempIsPath = swappedGrid[selectedCell.row][selectedCell.col].isPath;
-          swappedGrid[selectedCell.row][selectedCell.col].isPath = swappedGrid[row][col].isPath;
-          swappedGrid[row][col].isPath = tempIsPath;
+          // Do not swap path markers; path belongs to board coordinates
 
           // Validate: does this swap create any match?
           const validMove = hasAnyMatch(swappedGrid);
@@ -643,11 +716,11 @@ export const PrincessRescue = ({
           <>
             {/* Characters */}
             <div className="relative h-16 rounded-lg bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 flex items-center justify-between px-4">
-              <div className="text-4xl">👑</div>
+              <div className="text-4xl">{princePos ? "🤴" : "👑"}</div>
               <div className="absolute inset-0 flex items-center justify-center">
                 <Progress value={(pathProgress / level.pathLength) * 100} className="w-3/4" />
               </div>
-              <div className="text-4xl">👸</div>
+              <div className="text-4xl">{princessPos ? "👸" : "👸"}</div>
             </div>
 
             {/* Game Stats */}
@@ -713,6 +786,10 @@ export const PrincessRescue = ({
                       {isPossibleMove && !isSelected && (
                         <div className="absolute inset-0 bg-white/20 rounded-lg" />
                       )}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-2xl">
+                        {princePos && princePos.row === rowIndex && princePos.col === colIndex && <span>🤴</span>}
+                        {princessPos && princessPos.row === rowIndex && princessPos.col === colIndex && <span>👸</span>}
+                      </div>
                     </button>
                   );
                 })
@@ -724,8 +801,10 @@ export const PrincessRescue = ({
               <div className="text-center text-sm bg-primary/10 p-3 rounded-lg">
                 <p className="font-semibold mb-1">💡 Cách chơi:</p>
                 <p className="text-muted-foreground">
-                  Click vào 1 viên kẹo, sau đó click vào viên kẹo liền kề để đổi chỗ.
-                  Ghép 3+ viên cùng màu theo hàng hoặc cột để được điểm!
+                  Click vào 1 viên kẹo, sau đó click viên kẹo liền kề để đổi chỗ. Ghép 3+ viên cùng màu theo hàng/cột để mở đường.
+                </p>
+                <p className="text-muted-foreground">
+                  Dùng phím mũi tên hoặc WASD để di chuyển hoàng tử trên các ô đường đã mở. Tới được công chúa để thắng!
                 </p>
               </div>
               
