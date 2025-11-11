@@ -66,6 +66,7 @@ export default {
         'gradient-primary': 'var(--gradient-primary)',
         'gradient-golden': 'var(--gradient-golden)',
         'gradient-subtle': 'var(--gradient-subtle)',
+        'gradient-shimmer': 'var(--gradient-shimmer)',
       },
       boxShadow: {
         'soft': 'var(--shadow-soft)',
