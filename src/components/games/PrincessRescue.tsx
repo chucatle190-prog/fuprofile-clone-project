@@ -174,6 +174,11 @@ export const PrincessRescue = ({
   }, [gameStarted, gameWon, gameLost, toast]);
 
   const checkMatches = useCallback(() => {
+    // Guard: Check if grid is properly initialized
+    if (!grid || grid.length !== GRID_SIZE || !grid[0] || grid[0].length !== GRID_SIZE) {
+      return false;
+    }
+    
     const newGrid = grid.map((row) => row.map((cell) => ({ ...cell })));
     let hasMatches = false;
     const matched: { row: number; col: number }[] = [];
@@ -278,24 +283,29 @@ export const PrincessRescue = ({
         if (newGrid[row][col].matched) {
           emptySpaces++;
         } else if (emptySpaces > 0) {
+          // Store isPath before moving
+          const preservedIsPath = newGrid[row + emptySpaces][col].isPath;
           // Move cell down
-          newGrid[row + emptySpaces][col] = { ...newGrid[row][col] };
+          newGrid[row + emptySpaces][col] = { ...newGrid[row][col], isPath: preservedIsPath };
+          // Clear the old position (but keep its isPath status for new candy)
+          const oldIsPath = newGrid[row][col].isPath;
           newGrid[row][col] = {
             type: generateRandomCandy(),
             id: `${row}-${col}-${Date.now()}-${Math.random()}`,
             matched: false,
-            isPath: newGrid[row][col].isPath,
+            isPath: oldIsPath,
           };
         }
       }
       
       // Fill top cells
       for (let row = 0; row < emptySpaces; row++) {
+        const preservedIsPath = newGrid[row][col].isPath;
         newGrid[row][col] = {
           type: generateRandomCandy(),
           id: `${row}-${col}-${Date.now()}-${Math.random()}`,
           matched: false,
-          isPath: newGrid[row][col].isPath,
+          isPath: preservedIsPath,
         };
       }
     }
