@@ -70,6 +70,8 @@ export const PrincessRescue = ({
   const [gameStarted, setGameStarted] = useState(false);
   const [gameWon, setGameWon] = useState(false);
   const [gameLost, setGameLost] = useState(false);
+  const [isSwapping, setIsSwapping] = useState(false);
+  const [possibleMoves, setPossibleMoves] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const level = levels[currentLevel - 1];
@@ -320,8 +322,89 @@ export const PrincessRescue = ({
     }
   };
 
+  const findPossibleMoves = useCallback(() => {
+    const moves = new Set<string>();
+    
+    for (let row = 0; row < GRID_SIZE; row++) {
+      for (let col = 0; col < GRID_SIZE; col++) {
+        if (grid[row][col].type === "rock") continue;
+        
+        // Check horizontal swap
+        if (col < GRID_SIZE - 1 && grid[row][col + 1].type !== "rock") {
+          // Simulate swap right
+          const type1 = grid[row][col].type;
+          const type2 = grid[row][col + 1].type;
+          
+          // Check if this swap creates a match
+          let createsMatch = false;
+          
+          // Check horizontal match for first cell after swap
+          if (col >= 2 && grid[row][col - 1].type === type2 && grid[row][col - 2].type === type2) createsMatch = true;
+          if (col < GRID_SIZE - 2 && grid[row][col + 2].type === type2 && (col < GRID_SIZE - 3 ? grid[row][col + 3].type === type2 : false)) createsMatch = true;
+          if (col >= 1 && col < GRID_SIZE - 2 && grid[row][col - 1].type === type2 && grid[row][col + 2].type === type2) createsMatch = true;
+          
+          // Check horizontal match for second cell after swap
+          if (col >= 1 && grid[row][col - 1].type === type1 && (col >= 2 ? grid[row][col - 2].type === type1 : false)) createsMatch = true;
+          if (col < GRID_SIZE - 3 && grid[row][col + 2].type === type1 && grid[row][col + 3].type === type1) createsMatch = true;
+          if (col >= 1 && col < GRID_SIZE - 3 && grid[row][col - 1].type === type1 && grid[row][col + 2].type === type1) createsMatch = true;
+          
+          // Check vertical matches
+          if (row >= 2 && grid[row - 1][col].type === type2 && grid[row - 2][col].type === type2) createsMatch = true;
+          if (row < GRID_SIZE - 2 && grid[row + 1][col].type === type2 && grid[row + 2][col].type === type2) createsMatch = true;
+          if (row >= 1 && row < GRID_SIZE - 1 && grid[row - 1][col].type === type2 && grid[row + 1][col].type === type2) createsMatch = true;
+          
+          if (row >= 2 && grid[row - 1][col + 1].type === type1 && grid[row - 2][col + 1].type === type1) createsMatch = true;
+          if (row < GRID_SIZE - 2 && grid[row + 1][col + 1].type === type1 && grid[row + 2][col + 1].type === type1) createsMatch = true;
+          if (row >= 1 && row < GRID_SIZE - 1 && grid[row - 1][col + 1].type === type1 && grid[row + 1][col + 1].type === type1) createsMatch = true;
+          
+          if (createsMatch) {
+            moves.add(`${row}-${col}`);
+            moves.add(`${row}-${col + 1}`);
+          }
+        }
+        
+        // Check vertical swap
+        if (row < GRID_SIZE - 1 && grid[row + 1][col].type !== "rock") {
+          const type1 = grid[row][col].type;
+          const type2 = grid[row + 1][col].type;
+          
+          let createsMatch = false;
+          
+          // Similar checks for vertical swap
+          if (col >= 2 && grid[row][col - 1].type === type2 && grid[row][col - 2].type === type2) createsMatch = true;
+          if (col < GRID_SIZE - 2 && grid[row][col + 1].type === type2 && grid[row][col + 2].type === type2) createsMatch = true;
+          if (col >= 1 && col < GRID_SIZE - 1 && grid[row][col - 1].type === type2 && grid[row][col + 1].type === type2) createsMatch = true;
+          
+          if (col >= 2 && grid[row + 1][col - 1].type === type1 && grid[row + 1][col - 2].type === type1) createsMatch = true;
+          if (col < GRID_SIZE - 2 && grid[row + 1][col + 1].type === type1 && grid[row + 1][col + 2].type === type1) createsMatch = true;
+          if (col >= 1 && col < GRID_SIZE - 1 && grid[row + 1][col - 1].type === type1 && grid[row + 1][col + 1].type === type1) createsMatch = true;
+          
+          if (row >= 2 && grid[row - 1][col].type === type2 && grid[row - 2][col].type === type2) createsMatch = true;
+          if (row < GRID_SIZE - 2 && grid[row + 2][col].type === type2 && (row < GRID_SIZE - 3 ? grid[row + 3][col].type === type2 : false)) createsMatch = true;
+          if (row >= 1 && row < GRID_SIZE - 2 && grid[row - 1][col].type === type2 && grid[row + 2][col].type === type2) createsMatch = true;
+          
+          if (row >= 1 && grid[row - 1][col].type === type1 && (row >= 2 ? grid[row - 2][col].type === type1 : false)) createsMatch = true;
+          if (row < GRID_SIZE - 3 && grid[row + 2][col].type === type1 && grid[row + 3][col].type === type1) createsMatch = true;
+          
+          if (createsMatch) {
+            moves.add(`${row}-${col}`);
+            moves.add(`${row + 1}-${col}`);
+          }
+        }
+      }
+    }
+    
+    setPossibleMoves(moves);
+  }, [grid]);
+
+  useEffect(() => {
+    if (gameStarted && !gameWon && !gameLost && !isSwapping) {
+      findPossibleMoves();
+    }
+  }, [grid, gameStarted, gameWon, gameLost, isSwapping, findPossibleMoves]);
+
   const handleCellClick = (row: number, col: number) => {
-    if (grid[row][col].type === "rock" || grid[row][col].matched) {
+    if (grid[row][col].type === "rock" || grid[row][col].matched || isSwapping) {
       return;
     }
 
@@ -333,6 +416,7 @@ export const PrincessRescue = ({
 
       if ((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)) {
         // Adjacent cells - swap
+        setIsSwapping(true);
         const newGrid = grid.map((r) => r.map((c) => ({ ...c })));
         const temp = newGrid[selectedCell.row][selectedCell.col];
         newGrid[selectedCell.row][selectedCell.col] = newGrid[row][col];
@@ -351,6 +435,12 @@ export const PrincessRescue = ({
           const hasMatches = checkMatches();
           if (!hasMatches) {
             // Swap back if no matches
+            toast({
+              title: "Không hợp lệ!",
+              description: "Nước đi này không tạo ra match-3",
+              variant: "destructive",
+            });
+            
             const revertGrid = newGrid.map((r) => r.map((c) => ({ ...c })));
             const tempRevert = revertGrid[selectedCell.row][selectedCell.col];
             revertGrid[selectedCell.row][selectedCell.col] = revertGrid[row][col];
@@ -362,8 +452,14 @@ export const PrincessRescue = ({
             
             setGrid(revertGrid);
             setMoves((prev) => prev + 1);
+            
+            setTimeout(() => {
+              setIsSwapping(false);
+            }, 300);
+          } else {
+            setIsSwapping(false);
           }
-        }, 100);
+        }, 300);
       } else {
         setSelectedCell({ row, col });
       }
@@ -540,40 +636,63 @@ export const PrincessRescue = ({
               }}
             >
               {grid.map((row, rowIndex) =>
-                row.map((cell, colIndex) => (
-                  <button
-                    key={cell.id}
-                    onClick={() => handleCellClick(rowIndex, colIndex)}
-                    disabled={cell.matched || cell.type === "rock"}
-                    className={`
-                      aspect-square rounded-lg transition-all duration-200
-                      ${candyColors[cell.type]}
-                      ${cell.isPath ? "ring-2 ring-yellow-400 ring-offset-2" : ""}
-                      ${
-                        selectedCell?.row === rowIndex && selectedCell?.col === colIndex
-                          ? "ring-4 ring-primary scale-95"
-                          : ""
-                      }
-                      ${cell.matched ? "opacity-0 scale-0" : "opacity-100 scale-100"}
-                      hover:scale-105 disabled:hover:scale-100 disabled:cursor-not-allowed
-                      flex items-center justify-center text-xl sm:text-2xl
-                    `}
-                  >
-                    {candyEmojis[cell.type]}
-                  </button>
-                ))
+                row.map((cell, colIndex) => {
+                  const isSelected = selectedCell?.row === rowIndex && selectedCell?.col === colIndex;
+                  const isPossibleMove = possibleMoves.has(`${rowIndex}-${colIndex}`);
+                  const isAdjacentToSelected = selectedCell && 
+                    ((Math.abs(selectedCell.row - rowIndex) === 1 && selectedCell.col === colIndex) ||
+                     (Math.abs(selectedCell.col - colIndex) === 1 && selectedCell.row === rowIndex));
+                  
+                  return (
+                    <button
+                      key={cell.id}
+                      onClick={() => handleCellClick(rowIndex, colIndex)}
+                      disabled={cell.matched || cell.type === "rock" || isSwapping}
+                      className={`
+                        aspect-square rounded-lg transition-all duration-200
+                        ${candyColors[cell.type]}
+                        ${cell.isPath ? "ring-2 ring-yellow-400 ring-offset-2" : ""}
+                        ${isSelected ? "ring-4 ring-white scale-110 shadow-lg z-10" : ""}
+                        ${isAdjacentToSelected && !cell.matched && cell.type !== "rock" ? "ring-2 ring-white/50 animate-pulse" : ""}
+                        ${isPossibleMove && !isSelected ? "animate-bounce" : ""}
+                        ${cell.matched ? "opacity-0 scale-0" : "opacity-100 scale-100"}
+                        hover:scale-105 disabled:hover:scale-100 disabled:cursor-not-allowed
+                        flex items-center justify-center text-xl sm:text-2xl relative
+                      `}
+                    >
+                      {candyEmojis[cell.type]}
+                      {isPossibleMove && !isSelected && (
+                        <div className="absolute inset-0 bg-white/20 rounded-lg" />
+                      )}
+                    </button>
+                  );
+                })
               )}
             </div>
 
-            {/* Legend */}
-            <div className="flex flex-wrap gap-3 justify-center text-xs sm:text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <div className="w-6 h-6 rounded border-2 border-yellow-400" />
-                <span>Đường đi</span>
+            {/* Instructions & Legend */}
+            <div className="space-y-2">
+              <div className="text-center text-sm bg-primary/10 p-3 rounded-lg">
+                <p className="font-semibold mb-1">💡 Cách chơi:</p>
+                <p className="text-muted-foreground">
+                  Click vào 1 viên kẹo, sau đó click vào viên kẹo liền kề để đổi chỗ.
+                  Ghép 3+ viên cùng màu theo hàng hoặc cột để được điểm!
+                </p>
               </div>
-              <div className="flex items-center gap-1">
-                <span>🪨</span>
-                <span>Chướng ngại vật</span>
+              
+              <div className="flex flex-wrap gap-3 justify-center text-xs sm:text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <div className="w-6 h-6 rounded border-2 border-yellow-400" />
+                  <span>Đường đi</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>🪨</span>
+                  <span>Chướng ngại vật</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-6 h-6 rounded bg-white/20 animate-bounce" />
+                  <span>Gợi ý nước đi</span>
+                </div>
               </div>
             </div>
           </>
