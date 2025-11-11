@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { UserPlus, UserCheck, X, Users, Search, MessageCircle } from "lucide-react";
+import { UserPlus, UserCheck, X, Users, Search, MessageCircle, UserMinus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Profile {
@@ -182,6 +182,27 @@ const Friends = () => {
     fetchFriendships(user!.id);
   };
 
+  const removeFriend = async (friendshipId: string) => {
+    const { error } = await supabase
+      .from("friendships")
+      .delete()
+      .eq("id", friendshipId);
+
+    if (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa bạn bè",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Đã xóa",
+        description: "Đã hủy kết bạn",
+      });
+      fetchFriendships(user!.id);
+    }
+  };
+
   const filteredFriends = friends.filter((friend) => {
     const profile = (friend as any).other_user || friend.profiles;
     return (
@@ -287,19 +308,28 @@ const Friends = () => {
                                 <p className="text-sm text-muted-foreground truncate">
                                   @{profile.username}
                                 </p>
-                                {profile.bio && (
+                                 {profile.bio && (
                                   <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                                     {profile.bio}
                                   </p>
                                 )}
-                                <Button
-                                  size="sm"
-                                  className="mt-2 w-full"
-                                  onClick={() => handleMessageFriend(profile.id, profile)}
-                                >
-                                  <MessageCircle className="h-4 w-4 mr-1" />
-                                  Nhắn tin
-                                </Button>
+                                <div className="flex gap-2 mt-2">
+                                  <Button
+                                    size="sm"
+                                    className="flex-1"
+                                    onClick={() => handleMessageFriend(profile.id, profile)}
+                                  >
+                                    <MessageCircle className="h-4 w-4 mr-1" />
+                                    Nhắn tin
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => removeFriend(friend.id)}
+                                  >
+                                    <UserMinus className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </Card>

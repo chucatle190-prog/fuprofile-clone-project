@@ -7,12 +7,14 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 type CandyType = "red" | "blue" | "green" | "yellow" | "purple" | "rock";
+type SpecialType = "none" | "striped-h" | "striped-v" | "wrapped" | "color-bomb";
 
 interface GridCell {
   type: CandyType;
   id: string;
   matched: boolean;
   isPath?: boolean;
+  special: SpecialType;
 }
 
 interface Level {
@@ -49,6 +51,14 @@ const candyEmojis: Record<CandyType, string> = {
   yellow: "🌟",
   purple: "🍇",
   rock: "🪨",
+};
+
+const specialEmojis: Record<SpecialType, string> = {
+  "none": "",
+  "striped-h": "➡️",
+  "striped-v": "⬆️",
+  "wrapped": "💥",
+  "color-bomb": "🌈",
 };
 
 export const PrincessRescue = ({
@@ -109,6 +119,7 @@ export const PrincessRescue = ({
           id: `${row}-${col}-${Date.now()}`,
           matched: false,
           isPath: false,
+          special: "none",
         };
       }
     }
@@ -280,14 +291,13 @@ export const PrincessRescue = ({
   };
 
   const checkMatches = useCallback(() => {
-    // Guard: Check if grid is properly initialized
     if (!grid || grid.length !== GRID_SIZE || !grid[0] || grid[0].length !== GRID_SIZE) {
       return false;
     }
     
     const newGrid = grid.map((row) => row.map((cell) => ({ ...cell })));
     let hasMatches = false;
-    const matched: { row: number; col: number }[] = [];
+    const matched: { row: number; col: number; matchLength: number; isHorizontal: boolean }[] = [];
 
     // Check horizontal matches
     for (let row = 0; row < GRID_SIZE; row++) {
@@ -299,16 +309,15 @@ export const PrincessRescue = ({
           newGrid[row][col + 2].type === type
         ) {
           let matchLength = 3;
-          matched.push({ row, col }, { row, col: col + 1 }, { row, col: col + 2 });
-          
-          // Check for longer matches
           let checkCol = col + 3;
           while (checkCol < GRID_SIZE && newGrid[row][checkCol].type === type) {
-            matched.push({ row, col: checkCol });
             matchLength++;
             checkCol++;
           }
           
+          for (let i = 0; i < matchLength; i++) {
+            matched.push({ row, col: col + i, matchLength, isHorizontal: true });
+          }
           hasMatches = true;
           col += matchLength - 1;
         }
@@ -325,16 +334,15 @@ export const PrincessRescue = ({
           newGrid[row + 2][col].type === type
         ) {
           let matchLength = 3;
-          matched.push({ row, col }, { row: row + 1, col }, { row: row + 2, col });
-          
-          // Check for longer matches
           let checkRow = row + 3;
           while (checkRow < GRID_SIZE && newGrid[checkRow][col].type === type) {
-            matched.push({ row: checkRow, col });
             matchLength++;
             checkRow++;
           }
           
+          for (let i = 0; i < matchLength; i++) {
+            matched.push({ row: row + i, col, matchLength, isHorizontal: false });
+          }
           hasMatches = true;
           row += matchLength - 1;
         }
@@ -342,41 +350,83 @@ export const PrincessRescue = ({
     }
 
     if (hasMatches) {
-      // Mark matched cells
       const uniqueMatched = Array.from(
         new Set(matched.map((m) => `${m.row}-${m.col}`))
       ).map((key) => {
         const [row, col] = key.split("-").map(Number);
-        return { row, col };
+        const info = matched.find((m) => m.row === row && m.col === col);
+        return { row, col, matchLength: info?.matchLength || 3, isHorizontal: info?.isHorizontal || true };
       });
 
+      // Check for special candy creation
+      uniqueMatched.forEach(({ row, col, matchLength, isHorizontal }) => {
+        if (matchLength >= 5) {
+          newGrid[row][col].special = "color-bomb";
+        } else if (matchLength === 4) {
+          newGrid[row][col].special = isHorizontal ? "striped-h" : "striped-v";
+        }
+      });
+
+      // Activate special candies if matched
+      const specialsTriggered: { row: number; col: number; special: SpecialType }[] = [];
       uniqueMatched.forEach(({ row, col }) => {
+        if (newGrid[row][col].special !== "none") {
+          specialsTriggered.push({ row, col, special: newGrid[row][col].special });
+        }
         newGrid[row][col].matched = true;
       });
 
+      // Apply special candy effects
+      specialsTriggered.forEach(({ row, col, special }) => {
+        if (special === "striped-h") {
+          for (let c = 0; c < GRID_SIZE; c++) {
+            if (newGrid[row][c].type !== "rock") newGrid[row][c].matched = true;
+          }
+        } else if (special === "striped-v") {
+          for (let r = 0; r < GRID_SIZE; r++) {
+            if (newGrid[r][col].type !== "rock") newGrid[r][col].matched = true;
+          }
+        } else if (special === "wrapped") {
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              const nr = row + dr, nc = col + dc;
+              if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && newGrid[nr][nc].type !== "rock") {
+                newGrid[nr][nc].matched = true;
+              }
+            }
+          }
+        } else if (special === "color-bomb") {
+          const targetType = newGrid[row][col].type;
+          for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+              if (newGrid[r][c].type === targetType && newGrid[r][c].type !== "rock") {
+                newGrid[r][c].matched = true;
+              }
+            }
+          }
+        }
+      });
+
       setGrid(newGrid);
-      const points = uniqueMatched.length * 100;
+      const allMatched = newGrid.flat().filter((c) => c.matched);
+      const points = allMatched.length * 100;
       setScore((prev) => prev + points);
 
-      // Mark opened path cells for movement
+      if (specialsTriggered.length > 0) {
+        toast({ title: "🎉 Special Candy!", description: `+${points} điểm!` });
+      }
+
       setOpenedPath((prev) => {
         const next = prev.map((r) => [...r]);
-        uniqueMatched.forEach(({ row, col }) => {
-          if (newGrid[row][col].isPath) {
-            next[row][col] = true;
-          }
+        allMatched.forEach((cell) => {
+          const r = parseInt(cell.id.split("-")[0]);
+          const c = parseInt(cell.id.split("-")[1]);
+          if (cell.isPath) next[r][c] = true;
         });
         return next;
       });
 
-      // Check if path cells were cleared
-      let pathCleared = 0;
-      uniqueMatched.forEach(({ row, col }) => {
-        if (newGrid[row][col].isPath) {
-          pathCleared++;
-        }
-      });
-
+      let pathCleared = allMatched.filter((c) => c.isPath).length;
       if (pathCleared > 0) {
         setPathProgress((prev) => Math.min(prev + pathCleared, level.pathLength));
       }
@@ -387,7 +437,7 @@ export const PrincessRescue = ({
     }
 
     return hasMatches;
-  }, [grid, level.pathLength]);
+  }, [grid, level.pathLength, toast]);
 
   const fillEmptyCells = useCallback(() => {
     const newGrid = grid.map((row) => row.map((cell) => ({ ...cell })));
@@ -413,6 +463,7 @@ export const PrincessRescue = ({
             id: `${row}-${col}-${Date.now()}-${Math.random()}`,
             matched: false,
             isPath: preservedIsPath,
+            special: "none",
           };
         }
       }
@@ -796,7 +847,12 @@ export const PrincessRescue = ({
                         flex items-center justify-center text-xl sm:text-2xl relative
                       `}
                     >
-                      {candyEmojis[cell.type]}
+                      <span className="relative">
+                        {candyEmojis[cell.type]}
+                        {cell.special !== "none" && (
+                          <span className="absolute -top-1 -right-1 text-xs">{specialEmojis[cell.special]}</span>
+                        )}
+                      </span>
                       {isPossibleMove && !isSelected && (
                         <div className="absolute inset-0 bg-white/20 rounded-lg" />
                       )}
