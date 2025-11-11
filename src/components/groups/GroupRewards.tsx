@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Gift, TrendingUp, Coins, Wallet, Download } from "lucide-react";
+import { Gift, Coins, Wallet, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useMetaMask } from "@/hooks/useMetaMask";
@@ -98,13 +98,26 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
 
       if (scoresError) throw scoresError;
 
-      setScores(scoresData || []);
+      // Fetch claimed rewards to filter out claimed scores
+      const { data: claimedRewards, error: claimedError } = await supabase
+        .from("claimed_rewards")
+        .select("game_score_id")
+        .eq("user_id", userId);
+
+      if (claimedError) throw claimedError;
+
+      const claimedScoreIds = new Set((claimedRewards || []).map(r => r.game_score_id));
+
+      // Filter out claimed scores and only show unclaimed ones
+      const unclaimedScores = (scoresData || []).filter(score => !claimedScoreIds.has(score.id));
       
-      // Calculate total points
-      const total = (scoresData || []).reduce((sum, score) => sum + score.score, 0);
+      setScores(unclaimedScores);
+      
+      // Calculate total unclaimed points
+      const total = unclaimedScores.reduce((sum, score) => sum + score.score, 0);
       setTotalPoints(total);
 
-      // Get claimed points (from wallet)
+      // Get current wallet balance
       const { data: wallet } = await supabase
         .from("user_wallets")
         .select("camly_balance")
@@ -122,10 +135,8 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      // Convert game points to F.U tokens (1 point = 1 F.U)
-      const unclaimedPoints = totalPoints - claimedPoints;
-      
-      if (unclaimedPoints <= 0) {
+      // Only claim unclaimed scores
+      if (totalPoints <= 0) {
         toast({
           title: "Không có phần thưởng",
           description: "Bạn đã nhận hết phần thưởng hoặc chưa có điểm nào.",
@@ -133,12 +144,13 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
         return;
       }
 
+      // Call edge function to claim rewards
       const { data, error } = await supabase.functions.invoke('claim-reward', {
         headers: {
           Authorization: `Bearer ${session?.access_token}`,
         },
         body: {
-          amount: unclaimedPoints,
+          amount: totalPoints,
           rewardType: 'game_reward',
           description: `Nhận thưởng từ minigame trong nhóm`
         }
@@ -147,9 +159,24 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
       if (error) throw error;
 
       if (data.success) {
+        // Mark all current scores as claimed
+        const claimRecords = scores.map(score => ({
+          user_id: userId,
+          game_score_id: score.id,
+          reward_amount: score.score,
+        }));
+
+        const { error: claimError } = await supabase
+          .from("claimed_rewards")
+          .insert(claimRecords);
+
+        if (claimError) {
+          console.error("Error marking scores as claimed:", claimError);
+        }
+
         toast({
           title: "Nhận thưởng thành công! 🎉",
-          description: `Bạn đã nhận ${unclaimedPoints} F.U Token`,
+          description: `Bạn đã nhận ${totalPoints} F.U Token`,
         });
         
         // Refresh data
@@ -276,6 +303,10 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
         return "🎰";
       case "word_puzzle":
         return "🧩";
+      case "memory_match":
+        return "🧠";
+      case "princess_rescue":
+        return "👑";
       default:
         return "🎮";
     }
@@ -287,12 +318,16 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
         return "Vòng Quay";
       case "word_puzzle":
         return "Ghép Từ";
+      case "memory_match":
+        return "Ghép Hình";
+      case "princess_rescue":
+        return "Giải Cứu";
       default:
         return "Game";
     }
   };
 
-  const unclaimedPoints = totalPoints - claimedPoints;
+  const unclaimedPoints = totalPoints;
 
   return (
     <Card>
@@ -304,27 +339,20 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-            <div className="flex items-center gap-1 text-primary mb-1">
-              <TrendingUp className="h-4 w-4" />
-              <span className="text-lg font-bold">{totalPoints}</span>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 rounded-lg bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-2 border-yellow-500/20">
+            <div className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400 mb-1">
+              <Gift className="h-4 w-4" />
+              <span className="text-lg font-bold">{unclaimedPoints}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Tổng điểm</p>
+            <p className="text-xs text-muted-foreground">Chưa nhận</p>
           </div>
           <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
             <div className="flex items-center gap-1 text-accent mb-1">
               <Coins className="h-4 w-4" />
               <span className="text-lg font-bold">{claimedPoints}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Đã nhận</p>
-          </div>
-          <div className="p-3 rounded-lg bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-2 border-yellow-500/20">
-            <div className="flex items-center gap-1 text-yellow-500 mb-1">
-              <Gift className="h-4 w-4" />
-              <span className="text-lg font-bold">{unclaimedPoints}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Chưa nhận</p>
+            <p className="text-xs text-muted-foreground">Ví hiện tại</p>
           </div>
         </div>
 
@@ -395,20 +423,20 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
           )}
         </div>
 
-        {/* Recent Scores */}
+        {/* Unclaimed Scores */}
         <div>
-          <h4 className="font-semibold mb-3 text-sm">Lịch sử gần đây</h4>
+          <h4 className="font-semibold mb-3 text-sm">Điểm chưa nhận</h4>
           {scores.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
-              <p className="text-sm">Chưa có điểm nào</p>
-              <p className="text-xs mt-1">Hãy chơi minigame để nhận điểm!</p>
+              <p className="text-sm">Không có điểm chưa nhận</p>
+              <p className="text-xs mt-1">Hãy chơi minigame để nhận điểm hoặc bạn đã nhận hết phần thưởng!</p>
             </div>
           ) : (
             <div className="space-y-2 max-h-[200px] overflow-y-auto">
               {scores.slice(0, 10).map((score) => (
                 <div
                   key={score.id}
-                  className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  className="flex items-center gap-3 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors"
                 >
                   <div className="text-xl flex-shrink-0">
                     {getGameIcon(score.game_type)}
@@ -419,7 +447,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
                       {new Date(score.created_at).toLocaleDateString("vi-VN")}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1 text-primary font-bold flex-shrink-0">
+                  <div className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400 font-bold flex-shrink-0">
                     +{score.score}
                   </div>
                 </div>

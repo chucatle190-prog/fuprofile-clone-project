@@ -44,6 +44,38 @@ export type Database = {
         }
         Relationships: []
       }
+      claimed_rewards: {
+        Row: {
+          claimed_at: string
+          game_score_id: string
+          id: string
+          reward_amount: number
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          game_score_id: string
+          id?: string
+          reward_amount: number
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          game_score_id?: string
+          id?: string
+          reward_amount?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claimed_rewards_game_score_id_fkey"
+            columns: ["game_score_id"]
+            isOneToOne: true
+            referencedRelation: "game_scores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           content: string
