@@ -2,32 +2,34 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { X, Heart, Star, Zap } from "lucide-react";
+import { X, Heart, Star, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-type CandyType = "red" | "blue" | "green" | "yellow" | "purple" | "obstacle" | "monster";
+type CandyType = "red" | "blue" | "green" | "yellow" | "purple" | "rock";
 
 interface GridCell {
   type: CandyType;
   id: string;
   matched: boolean;
+  isPath?: boolean;
 }
 
 interface Level {
   number: number;
   timeLimit: number;
+  movesLimit: number;
   scoreTarget: number;
-  obstacleCount: number;
-  monsterCount: number;
+  rockCount: number;
+  pathLength: number;
 }
 
 const levels: Level[] = [
-  { number: 1, timeLimit: 300, scoreTarget: 1000, obstacleCount: 3, monsterCount: 0 },
-  { number: 2, timeLimit: 240, scoreTarget: 2000, obstacleCount: 5, monsterCount: 1 },
-  { number: 3, timeLimit: 200, scoreTarget: 3000, obstacleCount: 7, monsterCount: 2 },
-  { number: 4, timeLimit: 180, scoreTarget: 4000, obstacleCount: 9, monsterCount: 3 },
-  { number: 5, timeLimit: 150, scoreTarget: 5000, obstacleCount: 12, monsterCount: 4 },
+  { number: 1, timeLimit: 300, movesLimit: 30, scoreTarget: 1000, rockCount: 5, pathLength: 3 },
+  { number: 2, timeLimit: 240, movesLimit: 25, scoreTarget: 2000, rockCount: 8, pathLength: 4 },
+  { number: 3, timeLimit: 200, movesLimit: 20, scoreTarget: 3000, rockCount: 12, pathLength: 5 },
+  { number: 4, timeLimit: 180, movesLimit: 18, scoreTarget: 4500, rockCount: 15, pathLength: 6 },
+  { number: 5, timeLimit: 150, movesLimit: 15, scoreTarget: 6000, rockCount: 20, pathLength: 7 },
 ];
 
 const GRID_SIZE = 8;
@@ -35,27 +37,25 @@ const candyColors: Record<CandyType, string> = {
   red: "bg-red-500",
   blue: "bg-blue-500",
   green: "bg-green-500",
-  yellow: "bg-yellow-500",
+  yellow: "bg-yellow-400",
   purple: "bg-purple-500",
-  obstacle: "bg-gray-700",
-  monster: "bg-red-900",
+  rock: "bg-gray-600",
 };
 
 const candyEmojis: Record<CandyType, string> = {
   red: "🍓",
-  blue: "🔷",
+  blue: "🍬",
   green: "🍏",
-  yellow: "⭐",
+  yellow: "🌟",
   purple: "🍇",
-  obstacle: "🪨",
-  monster: "👹",
+  rock: "🪨",
 };
 
-export const PrincessRescue = ({ 
+export const PrincessRescue = ({
   onClose,
   groupId,
-  userId 
-}: { 
+  userId,
+}: {
   onClose?: () => void;
   groupId?: string;
   userId?: string;
@@ -63,12 +63,13 @@ export const PrincessRescue = ({
   const [currentLevel, setCurrentLevel] = useState(1);
   const [grid, setGrid] = useState<GridCell[][]>([]);
   const [score, setScore] = useState(0);
+  const [moves, setMoves] = useState(30);
   const [timeLeft, setTimeLeft] = useState(300);
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
-  const [princePosition, setPrincePosition] = useState(0);
+  const [pathProgress, setPathProgress] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameWon, setGameWon] = useState(false);
-  const [lives, setLives] = useState(3);
+  const [gameLost, setGameLost] = useState(false);
   const { toast } = useToast();
 
   const level = levels[currentLevel - 1];
@@ -80,36 +81,58 @@ export const PrincessRescue = ({
 
   const initializeGrid = useCallback(() => {
     const newGrid: GridCell[][] = [];
+    
+    // Create basic grid
     for (let row = 0; row < GRID_SIZE; row++) {
       newGrid[row] = [];
       for (let col = 0; col < GRID_SIZE; col++) {
+        let type = generateRandomCandy();
+        
+        // Avoid creating initial matches
+        while (
+          (col >= 2 && newGrid[row][col - 1].type === type && newGrid[row][col - 2].type === type) ||
+          (row >= 2 && newGrid[row - 1][col].type === type && newGrid[row - 2][col].type === type)
+        ) {
+          type = generateRandomCandy();
+        }
+        
         newGrid[row][col] = {
-          type: generateRandomCandy(),
+          type,
           id: `${row}-${col}-${Date.now()}`,
           matched: false,
+          isPath: false,
         };
       }
     }
 
-    // Add obstacles
-    let obstaclesAdded = 0;
-    while (obstaclesAdded < level.obstacleCount) {
+    // Add rocks (obstacles)
+    let rocksAdded = 0;
+    while (rocksAdded < level.rockCount) {
       const row = Math.floor(Math.random() * GRID_SIZE);
       const col = Math.floor(Math.random() * GRID_SIZE);
-      if (newGrid[row][col].type !== "obstacle" && newGrid[row][col].type !== "monster") {
-        newGrid[row][col].type = "obstacle";
-        obstaclesAdded++;
+      if (newGrid[row][col].type !== "rock") {
+        newGrid[row][col].type = "rock";
+        rocksAdded++;
       }
     }
 
-    // Add monsters
-    let monstersAdded = 0;
-    while (monstersAdded < level.monsterCount) {
-      const row = Math.floor(Math.random() * GRID_SIZE);
-      const col = Math.floor(Math.random() * GRID_SIZE);
-      if (newGrid[row][col].type !== "obstacle" && newGrid[row][col].type !== "monster") {
-        newGrid[row][col].type = "monster";
-        monstersAdded++;
+    // Mark path cells (from top-left moving right and down)
+    let pathCells = 0;
+    let currentRow = 0;
+    let currentCol = 0;
+    
+    while (pathCells < level.pathLength && currentRow < GRID_SIZE) {
+      if (newGrid[currentRow][currentCol].type !== "rock") {
+        newGrid[currentRow][currentCol].isPath = true;
+        pathCells++;
+      }
+      
+      if (Math.random() > 0.5 && currentCol < GRID_SIZE - 1) {
+        currentCol++;
+      } else if (currentRow < GRID_SIZE - 1) {
+        currentRow++;
+      } else if (currentCol < GRID_SIZE - 1) {
+        currentCol++;
       }
     }
 
@@ -117,28 +140,28 @@ export const PrincessRescue = ({
   }, [generateRandomCandy, level]);
 
   useEffect(() => {
-    if (gameStarted && !gameWon) {
+    if (gameStarted && !gameWon && !gameLost) {
       initializeGrid();
       setTimeLeft(level.timeLimit);
+      setMoves(level.movesLimit);
       setScore(0);
-      setLives(3);
-      setPrincePosition(0);
+      setPathProgress(0);
     }
-  }, [currentLevel, gameStarted, gameWon, initializeGrid, level]);
+  }, [currentLevel, gameStarted, gameWon, gameLost, initializeGrid, level]);
 
   useEffect(() => {
-    if (!gameStarted || gameWon) return;
+    if (!gameStarted || gameWon || gameLost) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
+          setGameLost(true);
           toast({
             title: "Hết giờ!",
-            description: "Bạn đã hết thời gian. Thử lại nhé!",
+            description: "Bạn đã hết thời gian.",
             variant: "destructive",
           });
-          setGameStarted(false);
           return 0;
         }
         return prev - 1;
@@ -146,7 +169,7 @@ export const PrincessRescue = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [gameStarted, gameWon, toast]);
+  }, [gameStarted, gameWon, gameLost, toast]);
 
   const checkMatches = useCallback(() => {
     const newGrid = grid.map((row) => row.map((cell) => ({ ...cell })));
@@ -158,13 +181,23 @@ export const PrincessRescue = ({
       for (let col = 0; col < GRID_SIZE - 2; col++) {
         const type = newGrid[row][col].type;
         if (
-          type !== "obstacle" &&
-          type !== "monster" &&
+          type !== "rock" &&
           newGrid[row][col + 1].type === type &&
           newGrid[row][col + 2].type === type
         ) {
+          let matchLength = 3;
           matched.push({ row, col }, { row, col: col + 1 }, { row, col: col + 2 });
+          
+          // Check for longer matches
+          let checkCol = col + 3;
+          while (checkCol < GRID_SIZE && newGrid[row][checkCol].type === type) {
+            matched.push({ row, col: checkCol });
+            matchLength++;
+            checkCol++;
+          }
+          
           hasMatches = true;
+          col += matchLength - 1;
         }
       }
     }
@@ -174,24 +207,55 @@ export const PrincessRescue = ({
       for (let row = 0; row < GRID_SIZE - 2; row++) {
         const type = newGrid[row][col].type;
         if (
-          type !== "obstacle" &&
-          type !== "monster" &&
+          type !== "rock" &&
           newGrid[row + 1][col].type === type &&
           newGrid[row + 2][col].type === type
         ) {
+          let matchLength = 3;
           matched.push({ row, col }, { row: row + 1, col }, { row: row + 2, col });
+          
+          // Check for longer matches
+          let checkRow = row + 3;
+          while (checkRow < GRID_SIZE && newGrid[checkRow][col].type === type) {
+            matched.push({ row: checkRow, col });
+            matchLength++;
+            checkRow++;
+          }
+          
           hasMatches = true;
+          row += matchLength - 1;
         }
       }
     }
 
     if (hasMatches) {
-      matched.forEach(({ row, col }) => {
+      // Mark matched cells
+      const uniqueMatched = Array.from(
+        new Set(matched.map((m) => `${m.row}-${m.col}`))
+      ).map((key) => {
+        const [row, col] = key.split("-").map(Number);
+        return { row, col };
+      });
+
+      uniqueMatched.forEach(({ row, col }) => {
         newGrid[row][col].matched = true;
       });
 
       setGrid(newGrid);
-      setScore((prev) => prev + matched.length * 100);
+      const points = uniqueMatched.length * 100;
+      setScore((prev) => prev + points);
+
+      // Check if path cells were cleared
+      let pathCleared = 0;
+      uniqueMatched.forEach(({ row, col }) => {
+        if (newGrid[row][col].isPath) {
+          pathCleared++;
+        }
+      });
+
+      if (pathCleared > 0) {
+        setPathProgress((prev) => Math.min(prev + pathCleared, level.pathLength));
+      }
 
       setTimeout(() => {
         fillEmptyCells();
@@ -199,54 +263,65 @@ export const PrincessRescue = ({
     }
 
     return hasMatches;
-  }, [grid]);
+  }, [grid, level.pathLength]);
 
   const fillEmptyCells = useCallback(() => {
     const newGrid = grid.map((row) => row.map((cell) => ({ ...cell })));
 
     for (let col = 0; col < GRID_SIZE; col++) {
+      let emptySpaces = 0;
+      
+      // Count empty spaces from bottom to top
       for (let row = GRID_SIZE - 1; row >= 0; row--) {
         if (newGrid[row][col].matched) {
-          // Move cells down
-          for (let r = row; r > 0; r--) {
-            newGrid[r][col] = newGrid[r - 1][col];
-          }
-          // Generate new cell at top
-          newGrid[0][col] = {
+          emptySpaces++;
+        } else if (emptySpaces > 0) {
+          // Move cell down
+          newGrid[row + emptySpaces][col] = { ...newGrid[row][col] };
+          newGrid[row][col] = {
             type: generateRandomCandy(),
-            id: `${0}-${col}-${Date.now()}-${Math.random()}`,
+            id: `${row}-${col}-${Date.now()}-${Math.random()}`,
             matched: false,
+            isPath: newGrid[row][col].isPath,
           };
         }
+      }
+      
+      // Fill top cells
+      for (let row = 0; row < emptySpaces; row++) {
+        newGrid[row][col] = {
+          type: generateRandomCandy(),
+          id: `${row}-${col}-${Date.now()}-${Math.random()}`,
+          matched: false,
+          isPath: newGrid[row][col].isPath,
+        };
       }
     }
 
     setGrid(newGrid);
-    setTimeout(() => checkMatches(), 100);
+    setTimeout(() => {
+      const hasMoreMatches = checkMatches();
+      if (!hasMoreMatches) {
+        // Check if there are any possible moves
+        checkGameOver();
+      }
+    }, 100);
   }, [grid, generateRandomCandy, checkMatches]);
 
+  const checkGameOver = () => {
+    // Simple check - could be more sophisticated
+    if (moves <= 0 && score < level.scoreTarget) {
+      setGameLost(true);
+      toast({
+        title: "Thua rồi!",
+        description: "Hết nước đi. Thử lại nhé!",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleCellClick = (row: number, col: number) => {
-    if (grid[row][col].type === "obstacle" || grid[row][col].type === "monster") {
-      if (grid[row][col].type === "monster") {
-        setLives((prev) => {
-          const newLives = prev - 1;
-          if (newLives <= 0) {
-            toast({
-              title: "Thua rồi!",
-              description: "Hoàng tử đã bị quái vật đánh bại!",
-              variant: "destructive",
-            });
-            setGameStarted(false);
-          } else {
-            toast({
-              title: "Bị tấn công!",
-              description: `Còn ${newLives} mạng`,
-              variant: "destructive",
-            });
-          }
-          return newLives;
-        });
-      }
+    if (grid[row][col].type === "rock" || grid[row][col].matched) {
       return;
     }
 
@@ -257,14 +332,20 @@ export const PrincessRescue = ({
       const colDiff = Math.abs(selectedCell.col - col);
 
       if ((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)) {
-        // Swap cells
+        // Adjacent cells - swap
         const newGrid = grid.map((r) => r.map((c) => ({ ...c })));
         const temp = newGrid[selectedCell.row][selectedCell.col];
         newGrid[selectedCell.row][selectedCell.col] = newGrid[row][col];
         newGrid[row][col] = temp;
 
+        // Preserve isPath status
+        const tempIsPath = newGrid[selectedCell.row][selectedCell.col].isPath;
+        newGrid[selectedCell.row][selectedCell.col].isPath = newGrid[row][col].isPath;
+        newGrid[row][col].isPath = tempIsPath;
+
         setGrid(newGrid);
         setSelectedCell(null);
+        setMoves((prev) => prev - 1);
 
         setTimeout(() => {
           const hasMatches = checkMatches();
@@ -274,7 +355,13 @@ export const PrincessRescue = ({
             const tempRevert = revertGrid[selectedCell.row][selectedCell.col];
             revertGrid[selectedCell.row][selectedCell.col] = revertGrid[row][col];
             revertGrid[row][col] = tempRevert;
+            
+            const tempIsPathRevert = revertGrid[selectedCell.row][selectedCell.col].isPath;
+            revertGrid[selectedCell.row][selectedCell.col].isPath = revertGrid[row][col].isPath;
+            revertGrid[row][col].isPath = tempIsPathRevert;
+            
             setGrid(revertGrid);
+            setMoves((prev) => prev + 1);
           }
         }, 100);
       } else {
@@ -284,29 +371,28 @@ export const PrincessRescue = ({
   };
 
   useEffect(() => {
-    if (score >= level.scoreTarget && gameStarted) {
+    if (pathProgress >= level.pathLength && gameStarted && !gameWon) {
       if (currentLevel < 5) {
         toast({
-          title: "Qua màn!",
-          description: `Bạn đã hoàn thành màn ${currentLevel}!`,
+          title: "Qua màn! 🎉",
+          description: `Bạn đã mở khóa đường đến công chúa!`,
         });
-        setPrincePosition((prev) => prev + 20);
-        setCurrentLevel((prev) => prev + 1);
+        setTimeout(() => {
+          setCurrentLevel((prev) => prev + 1);
+        }, 1500);
       } else {
         setGameWon(true);
-        
+
         // Save score to database
         if (groupId && userId) {
           const saveScore = async () => {
             try {
-              const { error } = await supabase
-                .from("game_scores")
-                .insert({
-                  user_id: userId,
-                  group_id: groupId,
-                  game_type: "princess_rescue",
-                  score: score,
-                });
+              const { error } = await supabase.from("game_scores").insert({
+                user_id: userId,
+                group_id: groupId,
+                game_type: "princess_rescue",
+                score: score,
+              });
 
               if (error) throw error;
             } catch (error) {
@@ -316,14 +402,14 @@ export const PrincessRescue = ({
 
           saveScore();
         }
-        
+
         toast({
-          title: "Chiến thắng!",
+          title: "Chiến thắng! 👑💕👸",
           description: "Hoàng tử đã cứu được công chúa!",
         });
       }
     }
-  }, [score, level.scoreTarget, gameStarted, currentLevel, toast, groupId, userId]);
+  }, [pathProgress, level.pathLength, gameStarted, currentLevel, toast, gameWon, groupId, userId, score]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -331,10 +417,18 @@ export const PrincessRescue = ({
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const restartLevel = () => {
+    setGameLost(false);
+    setGameStarted(true);
+  };
+
   return (
     <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-2xl">🏰 Giải Cứu Công Chúa</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
+          <Crown className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500" />
+          Giải Cứu Công Chúa
+        </CardTitle>
         {onClose && (
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -343,13 +437,17 @@ export const PrincessRescue = ({
       </CardHeader>
       <CardContent className="space-y-4">
         {!gameStarted && !gameWon && (
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-4 py-8">
             <div className="text-6xl">👑</div>
             <h3 className="text-2xl font-bold">Màn {currentLevel}</h3>
-            <p>Giúp hoàng tử vượt qua chướng ngại vật và cứu công chúa!</p>
-            <p className="text-sm text-muted-foreground">
-              Ghép 3 viên kẹo cùng màu để ghi điểm. Tránh quái vật!
+            <p className="text-muted-foreground">
+              Ghép 3 viên kẹo cùng màu để mở đường cho hoàng tử!
             </p>
+            <div className="flex justify-between items-center max-w-xs mx-auto text-sm">
+              <div>⏱️ {formatTime(level.timeLimit)}</div>
+              <div>🎯 {level.scoreTarget} điểm</div>
+              <div>👟 {level.movesLimit} nước</div>
+            </div>
             <Button onClick={() => setGameStarted(true)} size="lg">
               Bắt đầu
             </Button>
@@ -357,11 +455,11 @@ export const PrincessRescue = ({
         )}
 
         {gameWon && (
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-4 py-8">
             <div className="text-6xl">👑💕👸</div>
             <h3 className="text-3xl font-bold text-primary">Chiến Thắng!</h3>
             <p className="text-xl">Hoàng tử đã cứu được công chúa!</p>
-            <p className="text-lg">Điểm: {score}</p>
+            <p className="text-lg font-semibold">Tổng điểm: {score}</p>
             <Button
               onClick={() => {
                 setGameWon(false);
@@ -375,80 +473,90 @@ export const PrincessRescue = ({
           </div>
         )}
 
-        {gameStarted && !gameWon && (
+        {gameLost && (
+          <div className="text-center space-y-4 py-8">
+            <div className="text-6xl">😢</div>
+            <h3 className="text-2xl font-bold">Chưa qua màn</h3>
+            <p>Điểm: {score} / {level.scoreTarget}</p>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={restartLevel}>Thử lại</Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setGameLost(false);
+                  setGameStarted(false);
+                }}
+              >
+                Về menu
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {gameStarted && !gameWon && !gameLost && (
           <>
-            {/* Game Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground">Màn</div>
-                <div className="text-xl font-bold">{currentLevel}/5</div>
+            {/* Characters */}
+            <div className="relative h-16 rounded-lg bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 flex items-center justify-between px-4">
+              <div className="text-4xl">👑</div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Progress value={(pathProgress / level.pathLength) * 100} className="w-3/4" />
               </div>
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground">Thời gian</div>
-                <div className="text-xl font-bold">{formatTime(timeLeft)}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground">Điểm</div>
-                <div className="text-xl font-bold">{score}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground">Mạng</div>
-                <div className="text-xl font-bold flex justify-center gap-1">
-                  {Array.from({ length: lives }).map((_, i) => (
-                    <Heart key={i} className="h-5 w-5 fill-red-500 text-red-500" />
-                  ))}
-                </div>
-              </div>
+              <div className="text-4xl">👸</div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Mục tiêu: {level.scoreTarget}</span>
-                <span>{Math.round((score / level.scoreTarget) * 100)}%</span>
+            {/* Game Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm">
+              <div className="bg-muted p-2 rounded">
+                <div className="text-muted-foreground">Màn</div>
+                <div className="font-bold">{currentLevel}/5</div>
               </div>
-              <Progress value={(score / level.scoreTarget) * 100} />
+              <div className="bg-muted p-2 rounded">
+                <div className="text-muted-foreground">Thời gian</div>
+                <div className="font-bold">{formatTime(timeLeft)}</div>
+              </div>
+              <div className="bg-muted p-2 rounded">
+                <div className="text-muted-foreground">Điểm</div>
+                <div className="font-bold">{score}</div>
+              </div>
+              <div className="bg-muted p-2 rounded">
+                <div className="text-muted-foreground">Nước đi</div>
+                <div className="font-bold">{moves}</div>
+              </div>
             </div>
 
             {/* Path Progress */}
-            <div className="relative h-12 bg-muted rounded-lg overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-between px-4">
-                <div
-                  className="text-3xl transition-all duration-500"
-                  style={{ transform: `translateX(${princePosition * 3.5}px)` }}
-                >
-                  👑
-                </div>
-                <div className="text-3xl">👸</div>
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary/20">
-                <div
-                  className="h-full bg-primary transition-all duration-500"
-                  style={{ width: `${princePosition}%` }}
-                />
-              </div>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-1">
+                Đường đã mở: {pathProgress} / {level.pathLength}
+              </p>
             </div>
 
             {/* Game Grid */}
-            <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))` }}>
+            <div
+              className="grid gap-1 mx-auto"
+              style={{
+                gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))`,
+                maxWidth: "min(100%, 500px)",
+              }}
+            >
               {grid.map((row, rowIndex) =>
                 row.map((cell, colIndex) => (
                   <button
                     key={cell.id}
                     onClick={() => handleCellClick(rowIndex, colIndex)}
-                    disabled={cell.matched}
+                    disabled={cell.matched || cell.type === "rock"}
                     className={`
                       aspect-square rounded-lg transition-all duration-200
                       ${candyColors[cell.type]}
+                      ${cell.isPath ? "ring-2 ring-yellow-400 ring-offset-2" : ""}
                       ${
                         selectedCell?.row === rowIndex && selectedCell?.col === colIndex
                           ? "ring-4 ring-primary scale-95"
                           : ""
                       }
                       ${cell.matched ? "opacity-0 scale-0" : "opacity-100 scale-100"}
-                      ${cell.type === "monster" ? "animate-pulse" : ""}
-                      hover:scale-105 disabled:hover:scale-100
-                      flex items-center justify-center text-2xl sm:text-3xl
+                      hover:scale-105 disabled:hover:scale-100 disabled:cursor-not-allowed
+                      flex items-center justify-center text-xl sm:text-2xl
                     `}
                   >
                     {candyEmojis[cell.type]}
@@ -458,14 +566,14 @@ export const PrincessRescue = ({
             </div>
 
             {/* Legend */}
-            <div className="flex flex-wrap gap-4 justify-center text-sm">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-3 justify-center text-xs sm:text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <div className="w-6 h-6 rounded border-2 border-yellow-400" />
+                <span>Đường đi</span>
+              </div>
+              <div className="flex items-center gap-1">
                 <span>🪨</span>
                 <span>Chướng ngại vật</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span>👹</span>
-                <span>Quái vật (-1 mạng)</span>
               </div>
             </div>
           </>
