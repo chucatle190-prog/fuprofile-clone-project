@@ -36,28 +36,28 @@ const levels: Level[] = [
 
 const GRID_SIZE = 8;
 const candyColors: Record<CandyType, string> = {
-  red: "bg-red-500",
-  blue: "bg-blue-500",
-  green: "bg-green-500",
-  yellow: "bg-yellow-400",
-  purple: "bg-purple-500",
-  rock: "bg-gray-600",
+  red: "bg-gradient-to-br from-pink-400 to-rose-500",
+  blue: "bg-gradient-to-br from-blue-400 to-cyan-500",
+  green: "bg-gradient-to-br from-emerald-400 to-green-500",
+  yellow: "bg-gradient-to-br from-yellow-300 to-amber-400",
+  purple: "bg-gradient-to-br from-purple-400 to-violet-500",
+  rock: "bg-gradient-to-br from-gray-500 to-gray-700",
 };
 
 const candyEmojis: Record<CandyType, string> = {
-  red: "🍓",
-  blue: "🍬",
-  green: "🍏",
-  yellow: "🌟",
-  purple: "🍇",
+  red: "💖",
+  blue: "💎",
+  green: "✨",
+  yellow: "⭐",
+  purple: "💜",
   rock: "🪨",
 };
 
 const specialEmojis: Record<SpecialType, string> = {
   "none": "",
-  "striped-h": "➡️",
-  "striped-v": "⬆️",
-  "wrapped": "💥",
+  "striped-h": "💫",
+  "striped-v": "🌠",
+  "wrapped": "✨",
   "color-bomb": "🌈",
 };
 
@@ -707,11 +707,11 @@ export const PrincessRescue = ({
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader className="flex flex-row items-center justify-between pb-3">
-        <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
-          <Crown className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500" />
-          Giải Cứu Công Chúa
+    <Card className="w-full max-w-4xl mx-auto bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-pink-950/20 dark:via-purple-950/20 dark:to-blue-950/20 border-2 border-pink-200 dark:border-pink-800 shadow-2xl">
+      <CardHeader className="flex flex-row items-center justify-between pb-3 bg-gradient-to-r from-pink-100/50 to-purple-100/50 dark:from-pink-900/20 dark:to-purple-900/20">
+        <CardTitle className="text-xl sm:text-2xl flex items-center gap-2 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent font-bold">
+          <Crown className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500 animate-pulse" />
+          💖 Hành Trình Tình Yêu 💖
         </CardTitle>
         {onClose && (
           <Button variant="ghost" size="icon" onClick={onClose}>
@@ -721,29 +721,59 @@ export const PrincessRescue = ({
       </CardHeader>
       <CardContent className="space-y-4">
         {!gameStarted && !gameWon && (
-          <div className="text-center space-y-4 py-8">
-            <div className="text-6xl">👑</div>
-            <h3 className="text-2xl font-bold">Màn {currentLevel}</h3>
-            <p className="text-muted-foreground">
-              Ghép 3 viên kẹo cùng màu để mở đường cho hoàng tử!
+          <div className="text-center space-y-6 py-12 bg-gradient-to-br from-pink-100 to-purple-100 dark:from-pink-900/30 dark:to-purple-900/30 rounded-2xl border-2 border-pink-200 dark:border-pink-700">
+            <div className="text-7xl animate-bounce">🤴💖👸</div>
+            <h3 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+              Màn {currentLevel} - Hành Trình Tình Yêu
+            </h3>
+            <p className="text-lg text-muted-foreground px-4">
+              ✨ Ghép 3 viên ngọc ma thuật để mở đường cho Hoàng Tử gặp Công Chúa! 💕
             </p>
-            <div className="flex justify-between items-center max-w-xs mx-auto text-sm">
-              <div>⏱️ {formatTime(level.timeLimit)}</div>
-              <div>🎯 {level.scoreTarget} điểm</div>
-              <div>👟 {level.movesLimit} nước</div>
+            <div className="flex justify-between items-center max-w-md mx-auto text-sm bg-white/50 dark:bg-black/20 p-4 rounded-xl">
+              <div className="flex flex-col items-center">
+                <span className="text-2xl">⏱️</span>
+                <span className="font-semibold">{formatTime(level.timeLimit)}</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-2xl">🎯</span>
+                <span className="font-semibold">{level.scoreTarget} điểm</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-2xl">👟</span>
+                <span className="font-semibold">{level.movesLimit} nước</span>
+              </div>
             </div>
-            <Button onClick={() => setGameStarted(true)} size="lg">
-              Bắt đầu
+            <Button 
+              onClick={() => setGameStarted(true)} 
+              size="lg"
+              className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white text-lg px-8 py-6 rounded-full shadow-lg hover:shadow-xl transition-all"
+            >
+              ✨ Bắt đầu hành trình ✨
             </Button>
           </div>
         )}
 
         {gameWon && (
-          <div className="text-center space-y-4 py-8">
-            <div className="text-6xl">👑💕👸</div>
-            <h3 className="text-3xl font-bold text-primary">Chiến Thắng!</h3>
-            <p className="text-xl">Hoàng tử đã cứu được công chúa!</p>
-            <p className="text-lg font-semibold">Tổng điểm: {score}</p>
+          <div className="text-center space-y-6 py-12 bg-gradient-to-br from-yellow-100 via-pink-100 to-purple-100 dark:from-yellow-900/30 dark:via-pink-900/30 dark:to-purple-900/30 rounded-2xl border-2 border-yellow-300 dark:border-yellow-700 shadow-2xl animate-fade-in">
+            <div className="text-8xl animate-bounce">🤴💕👸</div>
+            <div className="space-y-2">
+              <h3 className="text-4xl font-bold bg-gradient-to-r from-yellow-500 via-pink-500 to-purple-500 bg-clip-text text-transparent">
+                ✨ Chiến Thắng! ✨
+              </h3>
+              <p className="text-2xl animate-pulse">🌟 Tình yêu đã chiến thắng! 🌟</p>
+            </div>
+            <div className="text-6xl space-x-2">
+              <span className="inline-block animate-bounce" style={{ animationDelay: '0s' }}>⭐</span>
+              <span className="inline-block animate-bounce" style={{ animationDelay: '0.1s' }}>💖</span>
+              <span className="inline-block animate-bounce" style={{ animationDelay: '0.2s' }}>🌈</span>
+              <span className="inline-block animate-bounce" style={{ animationDelay: '0.3s' }}>✨</span>
+            </div>
+            <p className="text-xl">Hoàng tử đã gặp được công chúa của mình!</p>
+            <div className="bg-white/60 dark:bg-black/20 p-6 rounded-xl inline-block">
+              <p className="text-3xl font-bold bg-gradient-to-r from-yellow-600 to-pink-600 bg-clip-text text-transparent">
+                Tổng điểm: {score} 🏆
+              </p>
+            </div>
             <Button
               onClick={() => {
                 setGameWon(false);
@@ -751,8 +781,9 @@ export const PrincessRescue = ({
                 setCurrentLevel(1);
                 setScore(0);
               }}
+              className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white text-lg px-8 py-6 rounded-full shadow-lg hover:shadow-xl transition-all"
             >
-              Chơi lại
+              💖 Chơi lại hành trình 💖
             </Button>
           </div>
         )}
@@ -780,47 +811,67 @@ export const PrincessRescue = ({
         {gameStarted && !gameWon && !gameLost && (
           <>
             {/* Characters */}
-            <div className="relative h-16 rounded-lg bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 flex items-center justify-between px-4">
-              <div className="text-4xl">{princePos ? "🤴" : "👑"}</div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Progress value={(pathProgress / level.pathLength) * 100} className="w-3/4" />
+            <div className="relative h-20 rounded-2xl bg-gradient-to-r from-pink-200 via-purple-200 to-blue-200 dark:from-pink-900/40 dark:via-purple-900/40 dark:to-blue-900/40 flex items-center justify-between px-6 border-2 border-pink-300 dark:border-pink-700 shadow-lg">
+              <div className="text-5xl animate-pulse drop-shadow-lg">{princePos ? "🤴" : "👑"}</div>
+              <div className="absolute inset-0 flex items-center justify-center px-20">
+                <div className="w-full space-y-2">
+                  <div className="flex justify-center gap-1 text-xl">
+                    {Array.from({ length: Math.ceil((pathProgress / level.pathLength) * 10) }).map((_, i) => (
+                      <span key={i} className="animate-pulse">💖</span>
+                    ))}
+                  </div>
+                  <Progress value={(pathProgress / level.pathLength) * 100} className="h-3 bg-pink-100 dark:bg-pink-900" />
+                </div>
               </div>
-              <div className="text-4xl">{princessPos ? "👸" : "👸"}</div>
+              <div className="text-5xl animate-pulse drop-shadow-lg">{princessPos ? "👸" : "👸"}</div>
             </div>
 
             {/* Game Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm">
-              <div className="bg-muted p-2 rounded">
-                <div className="text-muted-foreground">Màn</div>
-                <div className="font-bold">{currentLevel}/5</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-sm">
+              <div className="bg-gradient-to-br from-pink-100 to-purple-100 dark:from-pink-900/30 dark:to-purple-900/30 p-3 rounded-xl border border-pink-200 dark:border-pink-800 shadow-md">
+                <div className="text-2xl mb-1">👑</div>
+                <div className="text-muted-foreground text-xs">Màn</div>
+                <div className="font-bold text-lg">{currentLevel}/5</div>
               </div>
-              <div className="bg-muted p-2 rounded">
-                <div className="text-muted-foreground">Thời gian</div>
-                <div className="font-bold">{formatTime(timeLeft)}</div>
+              <div className="bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 p-3 rounded-xl border border-blue-200 dark:border-blue-800 shadow-md">
+                <div className="text-2xl mb-1">⏱️</div>
+                <div className="text-muted-foreground text-xs">Thời gian</div>
+                <div className="font-bold text-lg">{formatTime(timeLeft)}</div>
               </div>
-              <div className="bg-muted p-2 rounded">
-                <div className="text-muted-foreground">Điểm</div>
-                <div className="font-bold">{score}</div>
+              <div className="bg-gradient-to-br from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 p-3 rounded-xl border border-yellow-200 dark:border-yellow-800 shadow-md">
+                <div className="text-2xl mb-1">⭐</div>
+                <div className="text-muted-foreground text-xs">Điểm</div>
+                <div className="font-bold text-lg">{score}</div>
               </div>
-              <div className="bg-muted p-2 rounded">
-                <div className="text-muted-foreground">Nước đi</div>
-                <div className="font-bold">{moves}</div>
+              <div className="bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 p-3 rounded-xl border border-green-200 dark:border-green-800 shadow-md">
+                <div className="text-2xl mb-1">👟</div>
+                <div className="text-muted-foreground text-xs">Nước đi</div>
+                <div className="font-bold text-lg">{moves}</div>
               </div>
             </div>
 
             {/* Path Progress */}
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-1">
-                Đường đã mở: {pathProgress} / {level.pathLength}
+            <div className="text-center bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-950/20 dark:to-purple-950/20 p-4 rounded-xl border border-pink-200 dark:border-pink-800">
+              <p className="text-sm font-semibold mb-2 flex items-center justify-center gap-2">
+                <span className="text-xl">✨</span>
+                Đường tình yêu đã mở: {pathProgress} / {level.pathLength}
+                <span className="text-xl">✨</span>
               </p>
+              <div className="flex justify-center gap-1">
+                {Array.from({ length: level.pathLength }).map((_, i) => (
+                  <span key={i} className={`text-2xl transition-all ${i < pathProgress ? 'scale-110 animate-bounce' : 'opacity-30'}`}>
+                    {i < pathProgress ? '💖' : '🤍'}
+                  </span>
+                ))}
+              </div>
             </div>
 
             {/* Game Grid */}
             <div
-              className="grid gap-1 mx-auto"
+              className="grid gap-2 mx-auto p-4 bg-gradient-to-br from-purple-100/50 via-pink-100/50 to-blue-100/50 dark:from-purple-900/20 dark:via-pink-900/20 dark:to-blue-900/20 rounded-2xl border-2 border-pink-200 dark:border-pink-800 shadow-xl"
               style={{
                 gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))`,
-                maxWidth: "min(100%, 500px)",
+                maxWidth: "min(100%, 520px)",
               }}
             >
               {grid.map((row, rowIndex) =>
@@ -837,28 +888,29 @@ export const PrincessRescue = ({
                       onClick={() => handleCellClick(rowIndex, colIndex)}
                       disabled={cell.matched || cell.type === "rock" || isSwapping}
                       className={`
-                        aspect-square rounded-lg transition-all duration-200
+                        aspect-square rounded-xl transition-all duration-300 transform
                         ${candyColors[cell.type]}
-                        ${cell.isPath ? "ring-2 ring-yellow-400 ring-offset-2" : ""}
-                        ${isSelected ? "ring-4 ring-white shadow-lg z-10" : ""}
-                        ${isAdjacentToSelected && !cell.matched && cell.type !== "rock" ? "ring-2 ring-white/50" : ""}
-                        ${cell.matched ? "opacity-0" : "opacity-100"}
+                        ${cell.isPath ? "ring-4 ring-yellow-400 ring-offset-2 ring-offset-pink-100 dark:ring-offset-pink-900 shadow-lg shadow-yellow-300/50" : ""}
+                        ${isSelected ? "ring-4 ring-pink-500 shadow-2xl scale-110 z-10 shadow-pink-500/50" : ""}
+                        ${isAdjacentToSelected && !cell.matched && cell.type !== "rock" ? "ring-2 ring-pink-300 shadow-lg" : ""}
+                        ${cell.matched ? "opacity-0 scale-50" : "opacity-100 hover:scale-105"}
                         disabled:cursor-not-allowed
-                        flex items-center justify-center text-xl sm:text-2xl relative
+                        flex items-center justify-center text-2xl sm:text-3xl relative
+                        backdrop-blur-sm shadow-md hover:shadow-xl
                       `}
                     >
-                      <span className="relative">
+                      <span className="relative drop-shadow-lg transform transition-transform hover:scale-110">
                         {candyEmojis[cell.type]}
                         {cell.special !== "none" && (
-                          <span className="absolute -top-1 -right-1 text-xs">{specialEmojis[cell.special]}</span>
+                          <span className="absolute -top-2 -right-2 text-sm animate-pulse">{specialEmojis[cell.special]}</span>
                         )}
                       </span>
                       {isPossibleMove && !isSelected && (
-                        <div className="absolute inset-0 bg-white/20 rounded-lg" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-pink-200/30 rounded-xl animate-pulse" />
                       )}
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-2xl">
-                        {princePos && princePos.row === rowIndex && princePos.col === colIndex && <span>🤴</span>}
-                        {princessPos && princessPos.row === rowIndex && princessPos.col === colIndex && <span>👸</span>}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-3xl sm:text-4xl drop-shadow-2xl">
+                        {princePos && princePos.row === rowIndex && princePos.col === colIndex && <span className="animate-bounce">🤴</span>}
+                        {princessPos && princessPos.row === rowIndex && princessPos.col === colIndex && <span className="animate-bounce">👸</span>}
                       </div>
                     </button>
                   );
@@ -867,29 +919,33 @@ export const PrincessRescue = ({
             </div>
 
             {/* Instructions & Legend */}
-            <div className="space-y-2">
-              <div className="text-center text-sm bg-primary/10 p-3 rounded-lg">
-                <p className="font-semibold mb-1">💡 Cách chơi:</p>
-                <p className="text-muted-foreground">
-                  Click vào 1 viên kẹo, sau đó click viên kẹo liền kề để đổi chỗ. Ghép 3+ viên cùng màu theo hàng/cột để mở đường.
+            <div className="space-y-3">
+              <div className="text-center text-sm bg-gradient-to-r from-pink-100 via-purple-100 to-blue-100 dark:from-pink-900/30 dark:via-purple-900/30 dark:to-blue-900/30 p-4 rounded-xl border border-pink-200 dark:border-pink-800 shadow-lg">
+                <p className="font-bold text-base mb-2 flex items-center justify-center gap-2">
+                  <span className="text-xl">💡</span>
+                  Cách chơi
+                  <span className="text-xl">💡</span>
+                </p>
+                <p className="text-muted-foreground mb-2">
+                  ✨ Click vào viên ngọc, sau đó click viên ngọc liền kề để đổi chỗ. Ghép 3+ viên cùng loại để mở đường tình yêu!
                 </p>
                 <p className="text-muted-foreground">
-                  Dùng phím mũi tên hoặc WASD để di chuyển hoàng tử trên các ô đường đã mở. Tới được công chúa để thắng!
+                  🎮 Dùng phím mũi tên hoặc WASD để di chuyển Hoàng tử đến gặp Công chúa! 💕
                 </p>
               </div>
               
-              <div className="flex flex-wrap gap-3 justify-center text-xs sm:text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <div className="w-6 h-6 rounded border-2 border-yellow-400" />
-                  <span>Đường đi</span>
+              <div className="flex flex-wrap gap-3 justify-center text-xs sm:text-sm">
+                <div className="flex items-center gap-2 bg-white/60 dark:bg-black/20 px-3 py-2 rounded-lg border border-yellow-300 dark:border-yellow-700">
+                  <div className="w-6 h-6 rounded-lg border-2 border-yellow-400 shadow-sm" />
+                  <span className="font-semibold">Đường tình yêu</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span>🪨</span>
-                  <span>Chướng ngại vật</span>
+                <div className="flex items-center gap-2 bg-white/60 dark:bg-black/20 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700">
+                  <span className="text-lg">🪨</span>
+                  <span className="font-semibold">Chướng ngại</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-6 h-6 rounded bg-white/20" />
-                  <span>Gợi ý nước đi</span>
+                <div className="flex items-center gap-2 bg-white/60 dark:bg-black/20 px-3 py-2 rounded-lg border border-pink-300 dark:border-pink-700">
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-pink-200 to-purple-200 shadow-sm" />
+                  <span className="font-semibold">Gợi ý</span>
                 </div>
               </div>
             </div>
