@@ -538,16 +538,26 @@ export const PrincessRescue = ({
       const colDiff = Math.abs(selectedCell.col - col);
 
         if ((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)) {
-          // Adjacent cells - swap with upfront validation
+          // Adjacent cells - swap candies only, keep isPath at board positions
           setIsSwapping(true);
-          const prevSelectedCell = { ...selectedCell }; // Save selected cell before clearing
+          const prevSelectedCell = { ...selectedCell };
           const swappedGrid = grid.map((r) => r.map((c) => ({ ...c })));
-          // Perform swap
-          const temp = swappedGrid[selectedCell.row][selectedCell.col];
-          swappedGrid[selectedCell.row][selectedCell.col] = swappedGrid[row][col];
-          swappedGrid[row][col] = temp;
-          // Keep path markers on board cells (not attached to candy)
-          // Do not swap path markers; path belongs to board coordinates
+          
+          // Save isPath flags before swap (they stay with board positions)
+          const isPath1 = swappedGrid[selectedCell.row][selectedCell.col].isPath;
+          const isPath2 = swappedGrid[row][col].isPath;
+          
+          // Swap candy types and ids only
+          const tempType = swappedGrid[selectedCell.row][selectedCell.col].type;
+          const tempId = swappedGrid[selectedCell.row][selectedCell.col].id;
+          swappedGrid[selectedCell.row][selectedCell.col].type = swappedGrid[row][col].type;
+          swappedGrid[selectedCell.row][selectedCell.col].id = swappedGrid[row][col].id;
+          swappedGrid[row][col].type = tempType;
+          swappedGrid[row][col].id = tempId;
+          
+          // Restore isPath at original positions
+          swappedGrid[selectedCell.row][selectedCell.col].isPath = isPath1;
+          swappedGrid[row][col].isPath = isPath2;
 
           // Validate: does this swap create any match?
           const validMove = hasAnyMatch(swappedGrid);
@@ -570,14 +580,18 @@ export const PrincessRescue = ({
           setTimeout(() => {
             const hasMatchesNow = checkMatches();
             if (!hasMatchesNow) {
-              // Extremely rare edge case if cascade changed unexpectedly; revert and refund move
+              // Rare: revert swap
               const revertGrid = swappedGrid.map((r) => r.map((c) => ({ ...c })));
-              const tempRevert = revertGrid[prevSelectedCell.row][prevSelectedCell.col];
-              revertGrid[prevSelectedCell.row][prevSelectedCell.col] = revertGrid[row][col];
-              revertGrid[row][col] = tempRevert;
-              const tempIsPathRevert = revertGrid[prevSelectedCell.row][prevSelectedCell.col].isPath;
-              revertGrid[prevSelectedCell.row][prevSelectedCell.col].isPath = revertGrid[row][col].isPath;
-              revertGrid[row][col].isPath = tempIsPathRevert;
+              const isPath1R = revertGrid[prevSelectedCell.row][prevSelectedCell.col].isPath;
+              const isPath2R = revertGrid[row][col].isPath;
+              const tType = revertGrid[prevSelectedCell.row][prevSelectedCell.col].type;
+              const tId = revertGrid[prevSelectedCell.row][prevSelectedCell.col].id;
+              revertGrid[prevSelectedCell.row][prevSelectedCell.col].type = revertGrid[row][col].type;
+              revertGrid[prevSelectedCell.row][prevSelectedCell.col].id = revertGrid[row][col].id;
+              revertGrid[row][col].type = tType;
+              revertGrid[row][col].id = tId;
+              revertGrid[prevSelectedCell.row][prevSelectedCell.col].isPath = isPath1R;
+              revertGrid[row][col].isPath = isPath2R;
               setGrid(revertGrid);
               setMoves((prev) => prev + 1);
             }
