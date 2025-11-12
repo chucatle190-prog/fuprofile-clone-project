@@ -734,7 +734,7 @@ export default function CandyCrushGame() {
     <div className="relative min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100 p-4">
       <div className="relative z-10 max-w-4xl mx-auto space-y-4">
         {/* Prince 3D at top */}
-        <div className="h-32 rounded-lg overflow-hidden bg-gradient-to-r from-blue-900/20 to-purple-900/20 backdrop-blur-sm">
+        <div className="h-40 rounded-lg overflow-hidden bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-sm border-2 border-blue-400/30 shadow-xl">
           <ThreeScene gameState={threeSceneState} onRescueComplete={handleRescueComplete} characterType="prince" />
         </div>
         {/* Fixed Shop Button - Top Right */}
@@ -857,7 +857,7 @@ export default function CandyCrushGame() {
         </div>
         
         {/* Princess 3D at bottom */}
-        <div className="h-32 rounded-lg overflow-hidden bg-gradient-to-r from-pink-900/20 to-purple-900/20 backdrop-blur-sm">
+        <div className="h-40 rounded-lg overflow-hidden bg-gradient-to-r from-pink-500/20 to-purple-500/20 backdrop-blur-sm border-2 border-pink-400/30 shadow-xl">
           <ThreeScene gameState={threeSceneState} onRescueComplete={handleRescueComplete} characterType="princess" />
         </div>
       </div>
