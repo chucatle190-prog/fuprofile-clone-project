@@ -661,10 +661,12 @@ function ParticleEffect({ position, active }: { position: [number, number, numbe
 // Main Scene Component
 function Scene({ 
   gameState, 
-  onRescueComplete 
+  onRescueComplete,
+  characterType = 'both'
 }: { 
   gameState: 'playing' | 'rescuing' | 'rescued',
-  onRescueComplete?: () => void 
+  onRescueComplete?: () => void,
+  characterType?: 'prince' | 'princess' | 'both'
 }) {
   const [cageBroken, setCageBroken] = useState(false);
   const [showParticles, setShowParticles] = useState(false);
@@ -725,20 +727,28 @@ function Scene({
       <Environment preset="sunset" />
       
       {/* Candy Pile with Prince */}
-      <CandyPile position={[-3, 0, 0]} />
-      <Prince 
-        position={[-3, 1, 0]} 
-        animationState={princeAnim}
-        onAnimationComplete={handleHammerComplete}
-      />
+      {(characterType === 'prince' || characterType === 'both') && (
+        <>
+          <CandyPile position={[-3, 0, 0]} />
+          <Prince 
+            position={[-3, 1, 0]} 
+            animationState={princeAnim}
+            onAnimationComplete={handleHammerComplete}
+          />
+        </>
+      )}
       
       {/* Princess in Cage */}
-      <Princess 
-        position={[3, 0, 0]} 
-        isFreed={cageBroken}
-        animationState={cageBroken ? 'cheer' : 'idle'}
-      />
-      <CandyCage position={[3, 0, 0]} isBroken={cageBroken} />
+      {(characterType === 'princess' || characterType === 'both') && (
+        <>
+          <Princess 
+            position={[3, 0, 0]} 
+            isFreed={cageBroken}
+            animationState={cageBroken ? 'cheer' : 'idle'}
+          />
+          <CandyCage position={[3, 0, 0]} isBroken={cageBroken} />
+        </>
+      )}
       
       {/* Particle effects */}
       <ParticleEffect position={[3, 0, 0]} active={showParticles} />
@@ -780,14 +790,16 @@ function Scene({
 // Main Three.js Scene Container
 export default function ThreeScene({ 
   gameState = 'playing',
-  onRescueComplete 
+  onRescueComplete,
+  characterType = 'both'
 }: { 
   gameState?: 'playing' | 'rescuing' | 'rescued',
-  onRescueComplete?: () => void 
+  onRescueComplete?: () => void,
+  characterType?: 'prince' | 'princess' | 'both'
 }) {
   return (
     <div style={{ 
-      position: 'absolute', 
+      position: characterType === 'both' ? 'absolute' : 'relative',
       top: 0, 
       left: 0, 
       width: '100%', 
@@ -796,7 +808,7 @@ export default function ThreeScene({
       zIndex: 0
     }}>
       <Canvas shadows>
-        <Scene gameState={gameState} onRescueComplete={onRescueComplete} />
+        <Scene gameState={gameState} onRescueComplete={onRescueComplete} characterType={characterType} />
       </Canvas>
     </div>
   );
