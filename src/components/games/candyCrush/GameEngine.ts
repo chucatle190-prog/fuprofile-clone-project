@@ -26,10 +26,15 @@ export interface SwapResult {
 export class Match3Engine {
   grid: Cell[][];
   size: number;
+  princePosition: [number, number];
+  princessPosition: [number, number];
   
   constructor(size: number = GAME_CONFIG.GRID_SIZE) {
     this.size = size;
     this.grid = this.initializeGrid();
+    // Prince starts at bottom-left, Princess at top-right
+    this.princePosition = [size - 1, 0];
+    this.princessPosition = [0, size - 1];
   }
   
   initializeGrid(): Cell[][] {

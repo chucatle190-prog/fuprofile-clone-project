@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Match3Engine, type Cell } from "./GameEngine";
+import { getNextMoveTowardsPrincess } from "./PathFinding";
 import { GAME_CONFIG, SHOP_CONFIG, TREASURY_ADDRESS } from "@/config/gameConfig";
 import { useToast } from "@/hooks/use-toast";
 import { useFUToken } from "@/hooks/useFUToken";
@@ -40,6 +41,10 @@ interface InventoryItem {
 export default function CandyCrushGame() {
   const [engine] = useState(() => new Match3Engine());
   const [grid, setGrid] = useState<Cell[][]>(engine.grid);
+  const [princePosition, setPrincePosition] = useState<[number, number]>(engine.princePosition);
+  const [princessPosition, setPrincessPosition] = useState<[number, number]>(engine.princessPosition);
+  const [princeMoving, setPrinceMoving] = useState(false);
+  
   const [gameState, setGameState] = useState<GameState>({
     level: 1,
     score: 0,
@@ -191,6 +196,42 @@ export default function CandyCrushGame() {
       // The component will handle the database update
     }
   };
+  
+  // Move Prince after successful match
+  const movePrinceAfterMatch = useCallback(async () => {
+    if (princeMoving) return;
+    
+    // Check if prince already reached princess
+    if (princePosition[0] === princessPosition[0] && princePosition[1] === princessPosition[1]) {
+      return;
+    }
+    
+    setPrinceMoving(true);
+    
+    // Calculate next position moving toward princess
+    const nextPos = getNextMoveTowardsPrincess(
+      engine.grid,
+      princePosition,
+      princessPosition,
+      1 // Move 1 step at a time
+    );
+    
+    // Animate movement
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    setPrincePosition(nextPos);
+    engine.princePosition = nextPos;
+    
+    // Check if reached princess
+    if (nextPos[0] === princessPosition[0] && nextPos[1] === princessPosition[1]) {
+      setThreeSceneState('rescuing');
+      setTimeout(() => {
+        setGameState(prev => ({ ...prev, gameStatus: 'rescuing', isPlaying: false }));
+      }, 1000);
+    }
+    
+    setPrinceMoving(false);
+  }, [princePosition, princessPosition, engine, princeMoving]);
 
   const startLevel = (levelNum: number) => {
     // Check if level is locked
@@ -205,6 +246,13 @@ export default function CandyCrushGame() {
     
     const levelConfig = GAME_CONFIG.LEVELS[levelNum - 1];
     engine.grid = engine.initializeGrid();
+    
+    // Reset Prince and Princess positions
+    engine.princePosition = [engine.size - 1, 0];
+    engine.princessPosition = [0, engine.size - 1];
+    setPrincePosition([engine.size - 1, 0]);
+    setPrincessPosition([0, engine.size - 1]);
+    setPrinceMoving(false);
     
     if (levelConfig.obstacles.length > 0) {
       engine.addObstacles(levelConfig.obstacles);
@@ -509,6 +557,7 @@ export default function CandyCrushGame() {
   const processCascade = async () => {
     let totalScore = 0;
     let hasMatches = true;
+    let hadAnyMatches = false;
     
     while (hasMatches) {
       const matches = engine.findMatches();
@@ -518,6 +567,7 @@ export default function CandyCrushGame() {
         break;
       }
       
+      hadAnyMatches = true;
       const score = engine.clearMatches(matches);
       totalScore += score;
       setGrid([...engine.grid]);
@@ -536,6 +586,11 @@ export default function CandyCrushGame() {
     }
     
     setGameState(prev => ({ ...prev, score: prev.score + totalScore }));
+    
+    // Move prince after successful matches
+    if (hadAnyMatches && totalScore > 0) {
+      await movePrinceAfterMatch();
+    }
   };
 
   const checkGameStatus = () => {
@@ -756,17 +811,39 @@ export default function CandyCrushGame() {
                     } ${toolMode !== 'none' ? 'cursor-crosshair' : ''}`}
                     onClick={() => handleCellClick(rowIdx, colIdx)}
                   >
-                    {getGemDisplay(cell)}
+                    {/* Prince */}
+                    {princePosition[0] === rowIdx && princePosition[1] === colIdx && (
+                      <div className="absolute inset-0 flex items-center justify-center text-4xl z-20 animate-bounce">
+                        🤴
+                      </div>
+                    )}
+                    
+                    {/* Princess */}
+                    {princessPosition[0] === rowIdx && princessPosition[1] === colIdx && (
+                      <div className="absolute inset-0 flex items-center justify-center text-4xl z-20">
+                        <div className="relative animate-pulse">
+                          👸
+                          <div className="absolute -top-2 -right-2 text-xl">💖</div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Gem */}
+                    {!(princePosition[0] === rowIdx && princePosition[1] === colIdx) && 
+                     !(princessPosition[0] === rowIdx && princessPosition[1] === colIdx) && 
+                     getGemDisplay(cell)}
+                    
+                    {/* Obstacle */}
                     {cell.obstacle && (
                       <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center">
                         {cell.obstacle === 'ice' && '❄️'}
                         {cell.obstacle === 'lock' && '🔒'}
                         {cell.obstacle === 'stone' && '🪨'}
                       </div>
-                    )}
-                  </div>
-                );
-              })
+                     )}
+                   </div>
+                 );
+               })
             )}
           </div>
         </Card>
