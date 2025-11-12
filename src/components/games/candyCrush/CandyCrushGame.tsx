@@ -614,8 +614,8 @@ export default function CandyCrushGame() {
           }
         }
         
-        // Save progress immediately
-        saveProgress();
+        // Save progress immediately (after state updates)
+        setTimeout(() => saveProgress(), 0);
         
         // Check if final level
         if (prev.level === 20) {
@@ -1034,7 +1034,7 @@ export default function CandyCrushGame() {
                 Map
               </Button>
               {gameState.level < 20 && (
-                <Button onClick={() => startLevel(gameState.level + 1)} className="flex-1">
+                <Button onClick={() => { setHighestLevelCompleted(prev => Math.max(prev, gameState.level)); startLevel(gameState.level + 1); }} className="flex-1">
                   Màn tiếp theo
                 </Button>
               )}
