@@ -3,13 +3,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { Match3Engine, type Cell } from "./GameEngine";
-import { GAME_CONFIG } from "@/config/gameConfig";
+import { GAME_CONFIG, SHOP_CONFIG, TREASURY_ADDRESS } from "@/config/gameConfig";
 import { useToast } from "@/hooks/use-toast";
 import { useFUToken } from "@/hooks/useFUToken";
 import Shop from "./Shop";
 import ThreeScene from "./ThreeScene";
-import { ShoppingBag, Wallet, Home, Trophy } from "lucide-react";
+import { ShoppingBag, Wallet, Home, Trophy, X, Zap, Rainbow, Wind, Plus, Snowflake } from "lucide-react";
 
 interface GameState {
   level: number;
@@ -18,6 +19,17 @@ interface GameState {
   target: number;
   isPlaying: boolean;
   gameStatus: 'playing' | 'won' | 'lost' | 'rescuing' | 'rescued';
+}
+
+type ToolMode = 'none' | 'hammer' | 'rainbow' | 'windRow' | 'windCol' | 'addMoves' | 'antiIce';
+
+interface InventoryItem {
+  key: string;
+  name: string;
+  icon: any;
+  count: number;
+  price: number;
+  description: string;
 }
 
 export default function CandyCrushGame() {
@@ -35,11 +47,24 @@ export default function CandyCrushGame() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const [showLevelMap, setShowLevelMap] = useState(true);
-  const [inventory, setInventory] = useState<Record<string, number>>({});
   const [threeSceneState, setThreeSceneState] = useState<'playing' | 'rescuing' | 'rescued'>('playing');
   
+  // Inventory & Tool System
+  const [inventory, setInventory] = useState<Record<string, number>>({
+    THUNDER_HAMMER: 0,
+    RAINBOW: 0,
+    ROYAL_WIND: 0,
+    EXTRA_MOVES: 0,
+    ICE_BREAKER: 0,
+  });
+  const [toolMode, setToolMode] = useState<ToolMode>('none');
+  const [windMode, setWindMode] = useState<'row' | 'col'>('row');
+  const [selectedIceCells, setSelectedIceCells] = useState<[number, number][]>([]);
+  const [toolHint, setToolHint] = useState<string>('');
+  const [showRainbowPicker, setShowRainbowPicker] = useState(false);
+  
   const { toast } = useToast();
-  const { account, fuBalance } = useFUToken();
+  const { account, fuBalance, connectWallet, transferFU, isConnecting, switchToBSCTestnet, isCorrectNetwork } = useFUToken();
 
   const startLevel = (levelNum: number) => {
     const levelConfig = GAME_CONFIG.LEVELS[levelNum - 1];
@@ -62,9 +87,212 @@ export default function CandyCrushGame() {
     setThreeSceneState('playing');
   };
 
+  const handlePurchase = async (itemKey: string) => {
+    const newCount = (inventory[itemKey] || 0) + 1;
+    setInventory(prev => ({
+      ...prev,
+      [itemKey]: newCount,
+    }));
+    
+    toast({
+      title: "Mua thành công! 🎉",
+      description: `+1 ${SHOP_CONFIG[itemKey as keyof typeof SHOP_CONFIG].name}`,
+    });
+  };
+
+  // Tool System Functions
+  const activateTool = (tool: ToolMode, itemKey: string) => {
+    if (isAnimating) {
+      toast({
+        title: "Đang xử lý",
+        description: "Vui lòng đợi animation hoàn tất",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (inventory[itemKey] <= 0) {
+      toast({
+        title: "Không đủ vật phẩm",
+        description: "Vui lòng mua thêm trong Shop",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setToolMode(tool);
+    
+    switch (tool) {
+      case 'hammer':
+        setToolHint('⚡ Chọn 1 ô để phá');
+        break;
+      case 'rainbow':
+        setShowRainbowPicker(true);
+        setToolHint('🌈 Chọn 1 loại kẹo để xóa toàn bản đồ');
+        break;
+      case 'windRow':
+      case 'windCol':
+        setToolHint(`🌪️ Chọn ${tool === 'windRow' ? 'Hàng' : 'Cột'} → chạm ô bất kỳ`);
+        break;
+      case 'addMoves':
+        // Apply immediately
+        setGameState(prev => ({ ...prev, moves: prev.moves + 5 }));
+        setInventory(prev => ({ ...prev, EXTRA_MOVES: prev.EXTRA_MOVES - 1 }));
+        setToolMode('none');
+        toast({
+          title: "Đã cộng 5 lượt! ➕",
+        });
+        return;
+      case 'antiIce':
+        setToolHint('❄️ Chọn tối đa 5 ô băng/khóa, rồi nhấn Xác nhận');
+        break;
+    }
+  };
+
+  const cancelToolMode = () => {
+    setToolMode('none');
+    setToolHint('');
+    setSelectedIceCells([]);
+    setShowRainbowPicker(false);
+  };
+
+  const applyHammer = (row: number, col: number) => {
+    engine.grid[row][col].gem = null;
+    engine.grid[row][col].isEmpty = true;
+    
+    if (engine.grid[row][col].obstacle) {
+      engine.grid[row][col].obstacleHealth = 0;
+      engine.grid[row][col].obstacle = null;
+    }
+    
+    setGrid([...engine.grid]);
+    setInventory(prev => ({ ...prev, THUNDER_HAMMER: prev.THUNDER_HAMMER - 1 }));
+    cancelToolMode();
+    
+    setTimeout(() => processCascade(), 300);
+    
+    toast({
+      title: "Búa Sấm! ⚡",
+      description: "Đã phá ô thành công",
+    });
+  };
+
+  const applyRainbow = async (gemType: number) => {
+    let clearedCount = 0;
+    
+    for (let row = 0; row < engine.size; row++) {
+      for (let col = 0; col < engine.size; col++) {
+        if (engine.grid[row][col].gem === gemType) {
+          engine.grid[row][col].gem = null;
+          engine.grid[row][col].isEmpty = true;
+          clearedCount++;
+        }
+      }
+    }
+    
+    setGrid([...engine.grid]);
+    setInventory(prev => ({ ...prev, RAINBOW: prev.RAINBOW - 1 }));
+    setGameState(prev => ({ ...prev, moves: prev.moves - 1 }));
+    cancelToolMode();
+    
+    await processCascade();
+    
+    toast({
+      title: "Cầu Vồng! 🌈",
+      description: `Đã xóa ${clearedCount} viên kẹo`,
+    });
+  };
+
+  const applyWind = async (row: number, col: number) => {
+    if (toolMode === 'windRow') {
+      for (let c = 0; c < engine.size; c++) {
+        engine.grid[row][c].gem = null;
+        engine.grid[row][c].isEmpty = true;
+      }
+    } else {
+      for (let r = 0; r < engine.size; r++) {
+        engine.grid[r][col].gem = null;
+        engine.grid[r][col].isEmpty = true;
+      }
+    }
+    
+    setGrid([...engine.grid]);
+    setInventory(prev => ({ ...prev, ROYAL_WIND: prev.ROYAL_WIND - 1 }));
+    setGameState(prev => ({ ...prev, moves: prev.moves - 1 }));
+    cancelToolMode();
+    
+    await processCascade();
+    
+    toast({
+      title: "Gió Hoàng Gia! 🌪️",
+      description: `Đã xóa ${toolMode === 'windRow' ? 'hàng' : 'cột'}`,
+    });
+  };
+
+  const applyAntiIce = () => {
+    if (selectedIceCells.length === 0) {
+      toast({
+        title: "Chưa chọn ô nào",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    for (const [row, col] of selectedIceCells) {
+      if (engine.grid[row][col].obstacle) {
+        engine.grid[row][col].obstacleHealth = 0;
+        engine.grid[row][col].obstacle = null;
+      }
+    }
+    
+    setGrid([...engine.grid]);
+    setInventory(prev => ({ ...prev, ICE_BREAKER: prev.ICE_BREAKER - 1 }));
+    cancelToolMode();
+    
+    toast({
+      title: "Băng Hộ Mệnh! ❄️",
+      description: `Đã phá ${selectedIceCells.length} ô`,
+    });
+  };
+
   const handleCellClick = (row: number, col: number) => {
     if (!gameState.isPlaying || isAnimating) return;
 
+    // Handle tool mode
+    if (toolMode !== 'none') {
+      switch (toolMode) {
+        case 'hammer':
+          applyHammer(row, col);
+          break;
+        case 'rainbow':
+          // Handled by picker
+          break;
+        case 'windRow':
+        case 'windCol':
+          applyWind(row, col);
+          break;
+        case 'antiIce':
+          if (engine.grid[row][col].obstacle) {
+            const cellKey = `${row},${col}`;
+            const isSelected = selectedIceCells.some(([r, c]) => r === row && c === col);
+            
+            if (isSelected) {
+              setSelectedIceCells(prev => prev.filter(([r, c]) => r !== row || c !== col));
+            } else if (selectedIceCells.length < 5) {
+              setSelectedIceCells(prev => [...prev, [row, col]]);
+            } else {
+              toast({
+                title: "Tối đa 5 ô",
+                variant: "destructive",
+              });
+            }
+          }
+          break;
+      }
+      return;
+    }
+
+    // Normal swap logic
     if (!selectedCell) {
       setSelectedCell([row, col]);
     } else {
@@ -75,7 +303,6 @@ export default function CandyCrushGame() {
         return;
       }
 
-      // Try to swap
       performSwap(selRow, selCol, row, col);
       setSelectedCell(null);
     }
@@ -153,18 +380,6 @@ export default function CandyCrushGame() {
         return { ...prev, gameStatus: 'lost', isPlaying: false };
       }
       return prev;
-    });
-  };
-
-  const handlePurchase = (itemKey: string) => {
-    setInventory(prev => ({
-      ...prev,
-      [itemKey]: (prev[itemKey] || 0) + 1,
-    }));
-    
-    toast({
-      title: "Item Purchased! 🎉",
-      description: "Item added to your inventory",
     });
   };
 
@@ -263,6 +478,32 @@ export default function CandyCrushGame() {
       <ThreeScene gameState={threeSceneState} onRescueComplete={handleRescueComplete} />
       
       <div className="relative z-10 max-w-4xl mx-auto space-y-4">
+        {/* Fixed Shop Button - Top Right */}
+        <div className="fixed top-4 right-4 z-50">
+          <Button 
+            onClick={() => setShowShop(true)} 
+            size="lg"
+            className="shadow-lg hover:scale-110 transition-transform"
+          >
+            <ShoppingBag className="w-5 h-5 mr-2" />
+            🪄 Shop
+          </Button>
+        </div>
+
+        {/* Tool Hint Overlay */}
+        {toolMode !== 'none' && toolHint && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50">
+            <Card className="p-4 bg-yellow-50 border-2 border-yellow-400 shadow-lg">
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold">{toolHint}</span>
+                <Button size="sm" variant="ghost" onClick={cancelToolMode}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
         {/* HUD */}
         <Card className="p-4 backdrop-blur-sm bg-white/80">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
@@ -300,22 +541,27 @@ export default function CandyCrushGame() {
             gridTemplateColumns: `repeat(${GAME_CONFIG.GRID_SIZE}, minmax(0, 1fr))` 
           }}>
             {grid.map((row, rowIdx) =>
-              row.map((cell, colIdx) => (
-                <div
-                  key={`${rowIdx}-${colIdx}`}
-                  className={getCellClassName(rowIdx, colIdx)}
-                  onClick={() => handleCellClick(rowIdx, colIdx)}
-                >
-                  {getGemDisplay(cell)}
-                  {cell.obstacle && (
-                    <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center">
-                      {cell.obstacle === 'ice' && '❄️'}
-                      {cell.obstacle === 'lock' && '🔒'}
-                      {cell.obstacle === 'stone' && '🪨'}
-                    </div>
-                  )}
-                </div>
-              ))
+              row.map((cell, colIdx) => {
+                const isIceSelected = selectedIceCells.some(([r, c]) => r === rowIdx && c === colIdx);
+                return (
+                  <div
+                    key={`${rowIdx}-${colIdx}`}
+                    className={`${getCellClassName(rowIdx, colIdx)} ${
+                      isIceSelected ? 'ring-4 ring-blue-400' : ''
+                    } ${toolMode !== 'none' ? 'cursor-crosshair' : ''}`}
+                    onClick={() => handleCellClick(rowIdx, colIdx)}
+                  >
+                    {getGemDisplay(cell)}
+                    {cell.obstacle && (
+                      <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center">
+                        {cell.obstacle === 'ice' && '❄️'}
+                        {cell.obstacle === 'lock' && '🔒'}
+                        {cell.obstacle === 'stone' && '🪨'}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         </Card>
@@ -326,12 +572,161 @@ export default function CandyCrushGame() {
             <Home className="w-4 h-4 mr-2" />
             Map
           </Button>
-          <Button onClick={() => setShowShop(true)} variant="outline" className="flex-1">
-            <ShoppingBag className="w-4 h-4 mr-2" />
-            Shop
-          </Button>
         </div>
       </div>
+
+      {/* Toolbelt - Fixed Bottom Right */}
+      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+        {toolMode === 'antiIce' && selectedIceCells.length > 0 && (
+          <Button 
+            onClick={applyAntiIce}
+            size="lg"
+            className="w-full bg-blue-600 hover:bg-blue-700"
+          >
+            Xác nhận ({selectedIceCells.length}/5)
+          </Button>
+        )}
+        
+        <Card className="p-3 bg-white/95 backdrop-blur-sm shadow-2xl">
+          <div className="space-y-2 w-20 sm:w-24">
+            {/* Thunder Hammer */}
+            <div className="relative">
+              <Button
+                onClick={() => inventory.THUNDER_HAMMER > 0 ? activateTool('hammer', 'THUNDER_HAMMER') : setShowShop(true)}
+                disabled={isAnimating || (toolMode !== 'none' && toolMode !== 'hammer')}
+                className="w-full h-16 flex flex-col items-center justify-center gap-1 p-1"
+                variant={toolMode === 'hammer' ? 'default' : 'outline'}
+              >
+                <Zap className="w-6 h-6" />
+                <span className="text-xs">Búa</span>
+              </Button>
+              {inventory.THUNDER_HAMMER > 0 && (
+                <Badge className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0">
+                  {inventory.THUNDER_HAMMER}
+                </Badge>
+              )}
+            </div>
+
+            {/* Rainbow */}
+            <div className="relative">
+              <Button
+                onClick={() => inventory.RAINBOW > 0 ? activateTool('rainbow', 'RAINBOW') : setShowShop(true)}
+                disabled={isAnimating || (toolMode !== 'none' && toolMode !== 'rainbow')}
+                className="w-full h-16 flex flex-col items-center justify-center gap-1 p-1"
+                variant={toolMode === 'rainbow' ? 'default' : 'outline'}
+              >
+                <Rainbow className="w-6 h-6" />
+                <span className="text-xs">Vồng</span>
+              </Button>
+              {inventory.RAINBOW > 0 && (
+                <Badge className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0">
+                  {inventory.RAINBOW}
+                </Badge>
+              )}
+            </div>
+
+            {/* Royal Wind */}
+            <div className="relative">
+              <Button
+                onClick={() => {
+                  if (inventory.ROYAL_WIND > 0) {
+                    const mode = windMode === 'row' ? 'windRow' : 'windCol';
+                    activateTool(mode, 'ROYAL_WIND');
+                  } else {
+                    setShowShop(true);
+                  }
+                }}
+                disabled={isAnimating || (toolMode !== 'none' && toolMode !== 'windRow' && toolMode !== 'windCol')}
+                className="w-full h-16 flex flex-col items-center justify-center gap-1 p-1"
+                variant={toolMode === 'windRow' || toolMode === 'windCol' ? 'default' : 'outline'}
+              >
+                <Wind className="w-6 h-6" />
+                <span className="text-xs">Gió</span>
+              </Button>
+              {inventory.ROYAL_WIND > 0 && (
+                <Badge className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0">
+                  {inventory.ROYAL_WIND}
+                </Badge>
+              )}
+              {(toolMode === 'windRow' || toolMode === 'windCol') && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setWindMode(prev => prev === 'row' ? 'col' : 'row');
+                    setToolMode(windMode === 'row' ? 'windCol' : 'windRow');
+                  }}
+                  className="absolute -left-16 top-0 text-xs"
+                >
+                  {windMode === 'row' ? 'Hàng' : 'Cột'}
+                </Button>
+              )}
+            </div>
+
+            {/* Extra Moves */}
+            <div className="relative">
+              <Button
+                onClick={() => inventory.EXTRA_MOVES > 0 ? activateTool('addMoves', 'EXTRA_MOVES') : setShowShop(true)}
+                disabled={isAnimating}
+                className="w-full h-16 flex flex-col items-center justify-center gap-1 p-1"
+                variant="outline"
+              >
+                <Plus className="w-6 h-6" />
+                <span className="text-xs">+5</span>
+              </Button>
+              {inventory.EXTRA_MOVES > 0 && (
+                <Badge className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0">
+                  {inventory.EXTRA_MOVES}
+                </Badge>
+              )}
+            </div>
+
+            {/* Ice Breaker */}
+            <div className="relative">
+              <Button
+                onClick={() => inventory.ICE_BREAKER > 0 ? activateTool('antiIce', 'ICE_BREAKER') : setShowShop(true)}
+                disabled={isAnimating || (toolMode !== 'none' && toolMode !== 'antiIce')}
+                className="w-full h-16 flex flex-col items-center justify-center gap-1 p-1"
+                variant={toolMode === 'antiIce' ? 'default' : 'outline'}
+              >
+                <Snowflake className="w-6 h-6" />
+                <span className="text-xs">Băng</span>
+              </Button>
+              {inventory.ICE_BREAKER > 0 && (
+                <Badge className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0">
+                  {inventory.ICE_BREAKER}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Rainbow Gem Picker Dialog */}
+      <Dialog open={showRainbowPicker} onOpenChange={() => {
+        setShowRainbowPicker(false);
+        cancelToolMode();
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Chọn loại kẹo để xóa</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-3 gap-4 p-4">
+            {GAME_CONFIG.GEM_SYMBOLS.map((gem, idx) => (
+              <Button
+                key={idx}
+                onClick={() => {
+                  applyRainbow(idx);
+                  setShowRainbowPicker(false);
+                }}
+                className="h-20 text-4xl"
+                variant="outline"
+              >
+                {gem}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Win/Lose Dialogs */}
       <Dialog open={gameState.gameStatus === 'won'} onOpenChange={() => {}}>
