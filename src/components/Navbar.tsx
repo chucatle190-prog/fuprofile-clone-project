@@ -41,8 +41,7 @@ const Navbar = ({ user }: NavbarProps) => {
             loop
             muted
             playsInline
-            className="h-10 w-auto rounded-lg object-cover"
-            style={{ aspectRatio: '16/9' }}
+            className="h-12 w-auto rounded-lg object-contain"
           />
         </NavLink>
 

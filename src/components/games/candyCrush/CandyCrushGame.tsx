@@ -195,8 +195,8 @@ export default function CandyCrushGame() {
         },
         (payload) => {
           console.log('Realtime update:', payload);
-          if (payload.new && payload.new.user_id === userId) {
-            const data = payload.new as any;
+          const data = payload.new as any;
+          if (data && data.user_id === userId) {
             setHighestLevelCompleted(data.highest_level || 0);
             if (data.inventory) {
               setInventory(data.inventory);
