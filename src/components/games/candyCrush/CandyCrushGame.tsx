@@ -224,10 +224,13 @@ export default function CandyCrushGame() {
     
     // Check if reached princess
     if (nextPos[0] === princessPosition[0] && nextPos[1] === princessPosition[1]) {
+      playSound('win');
       setThreeSceneState('rescuing');
+      
+      // Trigger win after a short delay
       setTimeout(() => {
-        setGameState(prev => ({ ...prev, gameStatus: 'rescuing', isPlaying: false }));
-      }, 1000);
+        checkGameStatus();
+      }, 500);
     }
     
     setPrinceMoving(false);
@@ -595,7 +598,8 @@ export default function CandyCrushGame() {
 
   const checkGameStatus = () => {
     setGameState(prev => {
-      if (prev.score >= prev.target) {
+      // Check if Prince reached Princess - NEW WIN CONDITION
+      if (princePosition[0] === princessPosition[0] && princePosition[1] === princessPosition[1]) {
         playSound('win');
         
         // Update highest level completed
@@ -610,7 +614,7 @@ export default function CandyCrushGame() {
           }
         }
         
-        // Save progress
+        // Save progress immediately
         saveProgress();
         
         // Check if final level
@@ -1019,18 +1023,21 @@ export default function CandyCrushGame() {
       <Dialog open={gameState.gameStatus === 'won'} onOpenChange={() => {}}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-2xl text-center">🎉 Level Complete!</DialogTitle>
+            <DialogTitle className="text-2xl text-center">🎉 Hoàng tử đã cứu được Công chúa!</DialogTitle>
           </DialogHeader>
           <div className="text-center space-y-4">
             <Trophy className="w-16 h-16 mx-auto text-yellow-500" />
-            <p className="text-lg">Score: {gameState.score}</p>
+            <p className="text-lg">Màn {gameState.level} hoàn thành!</p>
+            <p className="text-sm text-muted-foreground">Score: {gameState.score}</p>
             <div className="flex gap-2">
               <Button onClick={() => setShowLevelMap(true)} variant="outline" className="flex-1">
                 Map
               </Button>
-              <Button onClick={() => startLevel(gameState.level + 1)} className="flex-1">
-                Next Level
-              </Button>
+              {gameState.level < 20 && (
+                <Button onClick={() => startLevel(gameState.level + 1)} className="flex-1">
+                  Màn tiếp theo
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>
