@@ -16,7 +16,6 @@ import WordPuzzle from "@/components/games/WordPuzzle";
 import GameLeaderboard from "@/components/games/GameLeaderboard";
 import QuizForSpins from "@/components/games/QuizForSpins";
 import MemoryMatch from "@/components/games/MemoryMatch";
-import { PrincessRescue } from "@/components/games/PrincessRescue";
 import CandyCrushGame from "@/components/games/candyCrush/CandyCrushGame";
 import UserLevel from "@/components/profile/UserLevel";
 import UserBadges from "@/components/profile/UserBadges";
@@ -517,11 +516,10 @@ const GroupDetail = () => {
                 />
               ) : showLeaderboard ? (
                 <Tabs defaultValue="spin" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 md:grid-cols-5">
+                  <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
                     <TabsTrigger value="spin">Vòng Quay</TabsTrigger>
                     <TabsTrigger value="puzzle">Ghép Chữ</TabsTrigger>
                     <TabsTrigger value="memory">Ghép Hình</TabsTrigger>
-                    <TabsTrigger value="rescue">Giải Cứu</TabsTrigger>
                     <TabsTrigger value="candy">💖 Candy Crush</TabsTrigger>
                   </TabsList>
                   <TabsContent value="spin">
@@ -533,20 +531,16 @@ const GroupDetail = () => {
                   <TabsContent value="memory">
                     <GameLeaderboard groupId={groupId!} gameType="memory_match" />
                   </TabsContent>
-                  <TabsContent value="rescue">
-                    <GameLeaderboard groupId={groupId!} gameType="princess_rescue" />
-                  </TabsContent>
                   <TabsContent value="candy">
                     <GameLeaderboard groupId={groupId!} gameType="candy_crush" />
                   </TabsContent>
                 </Tabs>
               ) : (
                 <Tabs defaultValue="candy" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 md:grid-cols-5">
+                  <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
                     <TabsTrigger value="spin">Vòng Quay</TabsTrigger>
                     <TabsTrigger value="puzzle">Ghép Chữ</TabsTrigger>
                     <TabsTrigger value="memory">Ghép Hình</TabsTrigger>
-                    <TabsTrigger value="rescue">Giải Cứu</TabsTrigger>
                     <TabsTrigger value="candy">💖 Candy Crush</TabsTrigger>
                   </TabsList>
                   <TabsContent value="spin">
@@ -557,9 +551,6 @@ const GroupDetail = () => {
                   </TabsContent>
                   <TabsContent value="memory">
                     <MemoryMatch groupId={groupId!} />
-                  </TabsContent>
-                  <TabsContent value="rescue">
-                    <PrincessRescue groupId={groupId!} userId={user?.id} />
                   </TabsContent>
                   <TabsContent value="candy">
                     <CandyCrushGame />
