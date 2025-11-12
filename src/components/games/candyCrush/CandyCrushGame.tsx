@@ -8,8 +8,13 @@ import { Match3Engine, type Cell } from "./GameEngine";
 import { GAME_CONFIG, SHOP_CONFIG, TREASURY_ADDRESS } from "@/config/gameConfig";
 import { useToast } from "@/hooks/use-toast";
 import { useFUToken } from "@/hooks/useFUToken";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { supabase } from "@/integrations/supabase/client";
 import Shop from "./Shop";
 import ThreeScene from "./ThreeScene";
+import TutorialOverlay from "./TutorialOverlay";
+import ParticleEffects, { type ParticleType } from "./ParticleEffects";
+import AchievementsDisplay from "./AchievementsDisplay";
 import { ShoppingBag, Wallet, Home, Trophy, X, Zap, Rainbow, Wind, Plus, Snowflake } from "lucide-react";
 
 interface GameState {
@@ -63,10 +68,141 @@ export default function CandyCrushGame() {
   const [toolHint, setToolHint] = useState<string>('');
   const [showRainbowPicker, setShowRainbowPicker] = useState(false);
   
+  // New features
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [particles, setParticles] = useState<Array<{id: string; x: number; y: number; type: ParticleType; timestamp: number}>>([]);
+  const [highestLevelCompleted, setHighestLevelCompleted] = useState(0);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [achievementUsage, setAchievementUsage] = useState<Record<string, number>>({});
+  
   const { toast } = useToast();
   const { account, fuBalance, connectWallet, transferFU, isConnecting, switchToBSCTestnet, isCorrectNetwork } = useFUToken();
+  const { playSound } = useSoundEffects();
+  
+  // Load user session
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id || null);
+    });
+  }, []);
+  
+  // Load progress from localStorage and Supabase
+  useEffect(() => {
+    const loadProgress = async () => {
+      // Load from localStorage
+      const saved = localStorage.getItem('candyCrushProgress');
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          setHighestLevelCompleted(data.highestLevelCompleted || 0);
+          setInventory(data.inventory || inventory);
+          setShowTutorial(!data.tutorialCompleted);
+        } catch (e) {
+          console.error('Error loading progress:', e);
+        }
+      } else {
+        setShowTutorial(true);
+      }
+      
+      // Load from Supabase if user is logged in
+      if (userId) {
+        try {
+          // @ts-ignore - Table will exist after migration
+          const { data } = await (supabase as any)
+            .from('candy_crush_progress')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+          
+          if (data) {
+            setHighestLevelCompleted(data.highest_level || 0);
+            if (data.inventory) {
+              setInventory(data.inventory);
+            }
+            setShowTutorial(!data.tutorial_completed);
+          }
+        } catch (error) {
+          console.error('Error loading progress from Supabase:', error);
+        }
+      }
+    };
+    
+    loadProgress();
+  }, [userId]);
+  
+  // Save progress to localStorage and Supabase
+  const saveProgress = useCallback(async () => {
+    const progressData = {
+      highestLevelCompleted,
+      inventory,
+      tutorialCompleted: !showTutorial,
+    };
+    
+    // Save to localStorage
+    localStorage.setItem('candyCrushProgress', JSON.stringify(progressData));
+    
+    // Save to Supabase if user is logged in
+    if (userId) {
+      try {
+        // @ts-ignore - Table will exist after migration
+        const { error } = await (supabase as any)
+          .from('candy_crush_progress')
+          .upsert({
+            user_id: userId,
+            highest_level: highestLevelCompleted,
+            inventory: inventory,
+            tutorial_completed: !showTutorial,
+            updated_at: new Date().toISOString(),
+          });
+        
+        if (error) {
+          console.error('Error saving progress:', error);
+        }
+      } catch (error) {
+        console.error('Error saving progress to Supabase:', error);
+      }
+    }
+  }, [highestLevelCompleted, inventory, showTutorial, userId]);
+  
+  // Auto-save progress periodically
+  useEffect(() => {
+    const interval = setInterval(saveProgress, 10000); // Save every 10 seconds
+    return () => clearInterval(interval);
+  }, [saveProgress]);
+  
+  // Particle effect helper
+  const addParticle = (x: number, y: number, type: ParticleType) => {
+    const id = `${Date.now()}-${Math.random()}`;
+    setParticles(prev => [...prev, { id, x, y, type, timestamp: Date.now() }]);
+    setTimeout(() => {
+      setParticles(prev => prev.filter(p => p.id !== id));
+    }, 2500);
+  };
+  
+  // Achievement tracking helper
+  const trackAchievement = async (type: string) => {
+    setAchievementUsage(prev => ({
+      ...prev,
+      [type]: (prev[type] || 0) + 1,
+    }));
+    
+    if (userId) {
+      // Update achievement in Supabase via AchievementsDisplay component
+      // The component will handle the database update
+    }
+  };
 
   const startLevel = (levelNum: number) => {
+    // Check if level is locked
+    if (levelNum > 1 && levelNum > highestLevelCompleted + 1) {
+      toast({
+        title: "Màn bị khóa! 🔒",
+        description: `Hoàn thành màn ${levelNum - 1} trước`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const levelConfig = GAME_CONFIG.LEVELS[levelNum - 1];
     engine.grid = engine.initializeGrid();
     
@@ -136,9 +272,12 @@ export default function CandyCrushGame() {
         break;
       case 'addMoves':
         // Apply immediately
+        playSound('moves');
+        addParticle(window.innerWidth / 2, window.innerHeight / 3, 'stars');
         setGameState(prev => ({ ...prev, moves: prev.moves + 5 }));
         setInventory(prev => ({ ...prev, EXTRA_MOVES: prev.EXTRA_MOVES - 1 }));
         setToolMode('none');
+        trackAchievement('move_master');
         toast({
           title: "Đã cộng 5 lượt! ➕",
         });
@@ -157,6 +296,15 @@ export default function CandyCrushGame() {
   };
 
   const applyHammer = (row: number, col: number) => {
+    playSound('hammer');
+    
+    // Get cell position for particle effect
+    const cellElement = document.querySelector(`[data-cell="${row}-${col}"]`);
+    if (cellElement) {
+      const rect = cellElement.getBoundingClientRect();
+      addParticle(rect.left + rect.width / 2, rect.top + rect.height / 2, 'lightning');
+    }
+    
     engine.grid[row][col].gem = null;
     engine.grid[row][col].isEmpty = true;
     
@@ -168,6 +316,7 @@ export default function CandyCrushGame() {
     setGrid([...engine.grid]);
     setInventory(prev => ({ ...prev, THUNDER_HAMMER: prev.THUNDER_HAMMER - 1 }));
     cancelToolMode();
+    trackAchievement('hammer_master');
     
     setTimeout(() => processCascade(), 300);
     
@@ -178,6 +327,9 @@ export default function CandyCrushGame() {
   };
 
   const applyRainbow = async (gemType: number) => {
+    playSound('rainbow');
+    addParticle(window.innerWidth / 2, window.innerHeight / 2, 'rainbow');
+    
     let clearedCount = 0;
     
     for (let row = 0; row < engine.size; row++) {
@@ -194,6 +346,7 @@ export default function CandyCrushGame() {
     setInventory(prev => ({ ...prev, RAINBOW: prev.RAINBOW - 1 }));
     setGameState(prev => ({ ...prev, moves: prev.moves - 1 }));
     cancelToolMode();
+    trackAchievement('rainbow_expert');
     
     await processCascade();
     
@@ -204,6 +357,14 @@ export default function CandyCrushGame() {
   };
 
   const applyWind = async (row: number, col: number) => {
+    playSound('wind');
+    
+    const cellElement = document.querySelector(`[data-cell="${row}-${col}"]`);
+    if (cellElement) {
+      const rect = cellElement.getBoundingClientRect();
+      addParticle(rect.left + rect.width / 2, rect.top + rect.height / 2, 'wind');
+    }
+    
     if (toolMode === 'windRow') {
       for (let c = 0; c < engine.size; c++) {
         engine.grid[row][c].gem = null;
@@ -220,6 +381,7 @@ export default function CandyCrushGame() {
     setInventory(prev => ({ ...prev, ROYAL_WIND: prev.ROYAL_WIND - 1 }));
     setGameState(prev => ({ ...prev, moves: prev.moves - 1 }));
     cancelToolMode();
+    trackAchievement('wind_lord');
     
     await processCascade();
     
@@ -238,7 +400,15 @@ export default function CandyCrushGame() {
       return;
     }
 
+    playSound('ice');
+    
     for (const [row, col] of selectedIceCells) {
+      const cellElement = document.querySelector(`[data-cell="${row}-${col}"]`);
+      if (cellElement) {
+        const rect = cellElement.getBoundingClientRect();
+        addParticle(rect.left + rect.width / 2, rect.top + rect.height / 2, 'ice');
+      }
+      
       if (engine.grid[row][col].obstacle) {
         engine.grid[row][col].obstacleHealth = 0;
         engine.grid[row][col].obstacle = null;
@@ -248,6 +418,7 @@ export default function CandyCrushGame() {
     setGrid([...engine.grid]);
     setInventory(prev => ({ ...prev, ICE_BREAKER: prev.ICE_BREAKER - 1 }));
     cancelToolMode();
+    trackAchievement('ice_breaker_pro');
     
     toast({
       title: "Băng Hộ Mệnh! ❄️",
@@ -370,6 +541,23 @@ export default function CandyCrushGame() {
   const checkGameStatus = () => {
     setGameState(prev => {
       if (prev.score >= prev.target) {
+        playSound('win');
+        
+        // Update highest level completed
+        if (prev.level > highestLevelCompleted) {
+          setHighestLevelCompleted(prev.level);
+          
+          // Track achievement for level completion
+          if (prev.level === 10) {
+            trackAchievement('level_10_complete');
+          } else if (prev.level === 20) {
+            trackAchievement('level_20_complete');
+          }
+        }
+        
+        // Save progress
+        saveProgress();
+        
         // Check if final level
         if (prev.level === 20) {
           setThreeSceneState('rescuing');
@@ -377,6 +565,7 @@ export default function CandyCrushGame() {
         }
         return { ...prev, gameStatus: 'won', isPlaying: false };
       } else if (prev.moves <= 0) {
+        playSound('lose');
         return { ...prev, gameStatus: 'lost', isPlaying: false };
       }
       return prev;
@@ -446,19 +635,32 @@ export default function CandyCrushGame() {
             )}
             
             <div className="grid grid-cols-4 sm:grid-cols-5 gap-4 mb-6">
-              {GAME_CONFIG.LEVELS.map((level, idx) => (
-                <Button
-                  key={idx}
-                  onClick={() => startLevel(idx + 1)}
-                  className="h-16 relative"
-                  variant={idx === 0 ? "default" : "outline"}
-                >
-                  <div className="text-center">
-                    <div className="text-2xl">{(idx + 1) % 5 === 0 ? '👹' : '🏰'}</div>
-                    <div className="text-xs">{idx + 1}</div>
-                  </div>
-                </Button>
-              ))}
+              {GAME_CONFIG.LEVELS.map((level, idx) => {
+                const isLocked = idx > 0 && idx > highestLevelCompleted;
+                const isCompleted = idx < highestLevelCompleted;
+                
+                return (
+                  <Button
+                    key={idx}
+                    onClick={() => startLevel(idx + 1)}
+                    className="h-16 relative"
+                    variant={idx === 0 ? "default" : "outline"}
+                    disabled={isLocked}
+                  >
+                    <div className="text-center">
+                      <div className="text-2xl">
+                        {isLocked ? '🔒' : (idx + 1) % 5 === 0 ? '👹' : '🏰'}
+                      </div>
+                      <div className="text-xs">{idx + 1}</div>
+                      {isCompleted && (
+                        <div className="absolute -top-1 -right-1">
+                          <span className="text-xs">✅</span>
+                        </div>
+                      )}
+                    </div>
+                  </Button>
+                );
+              })}
             </div>
             
             <Button onClick={() => setShowShop(true)} className="w-full" size="lg">
@@ -546,6 +748,7 @@ export default function CandyCrushGame() {
                 return (
                   <div
                     key={`${rowIdx}-${colIdx}`}
+                    data-cell={`${rowIdx}-${colIdx}`}
                     className={`${getCellClassName(rowIdx, colIdx)} ${
                       isIceSelected ? 'ring-4 ring-blue-400' : ''
                     } ${toolMode !== 'none' ? 'cursor-crosshair' : ''}`}
@@ -785,6 +988,21 @@ export default function CandyCrushGame() {
       </Dialog>
 
       <Shop isOpen={showShop} onClose={() => setShowShop(false)} onPurchase={handlePurchase} />
+      
+      {/* Tutorial Overlay */}
+      <TutorialOverlay 
+        isOpen={showTutorial} 
+        onComplete={() => {
+          setShowTutorial(false);
+          saveProgress();
+        }} 
+      />
+      
+      {/* Particle Effects */}
+      <ParticleEffects particles={particles} />
+      
+      {/* Achievements Display */}
+      {userId && <AchievementsDisplay userId={userId} />}
     </div>
   );
 }
