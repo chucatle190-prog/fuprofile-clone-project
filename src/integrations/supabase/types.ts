@@ -44,6 +44,78 @@ export type Database = {
         }
         Relationships: []
       }
+      candy_crush_achievements: {
+        Row: {
+          achievement_name: string
+          achievement_type: string
+          created_at: string | null
+          id: string
+          progress: number
+          target: number
+          unlocked_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          achievement_name: string
+          achievement_type: string
+          created_at?: string | null
+          id?: string
+          progress?: number
+          target: number
+          unlocked_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          achievement_name?: string
+          achievement_type?: string
+          created_at?: string | null
+          id?: string
+          progress?: number
+          target?: number
+          unlocked_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      candy_crush_progress: {
+        Row: {
+          created_at: string | null
+          highest_level: number
+          id: string
+          inventory: Json | null
+          levels_completed: Json | null
+          total_stars: number | null
+          tutorial_completed: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          highest_level?: number
+          id?: string
+          inventory?: Json | null
+          levels_completed?: Json | null
+          total_stars?: number | null
+          tutorial_completed?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          highest_level?: number
+          id?: string
+          inventory?: Json | null
+          levels_completed?: Json | null
+          total_stars?: number | null
+          tutorial_completed?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       claimed_rewards: {
         Row: {
           claimed_at: string

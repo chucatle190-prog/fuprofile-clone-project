@@ -136,9 +136,11 @@ export default function CandyCrushGame() {
   }, [userId]);
   
   // Save progress to localStorage and Supabase
-  const saveProgress = useCallback(async () => {
+  const saveProgress = useCallback(async (levelCompleted?: number) => {
+    const levelToSave = levelCompleted !== undefined ? levelCompleted : highestLevelCompleted;
+    
     const progressData = {
-      highestLevelCompleted,
+      highestLevelCompleted: levelToSave,
       inventory,
       tutorialCompleted: !showTutorial,
     };
@@ -154,7 +156,7 @@ export default function CandyCrushGame() {
           .from('candy_crush_progress')
           .upsert({
             user_id: userId,
-            highest_level: highestLevelCompleted,
+            highest_level: levelToSave,
             inventory: inventory,
             tutorial_completed: !showTutorial,
             updated_at: new Date().toISOString(),
@@ -162,6 +164,8 @@ export default function CandyCrushGame() {
         
         if (error) {
           console.error('Error saving progress:', error);
+        } else {
+          console.log('Progress saved successfully:', levelToSave);
         }
       } catch (error) {
         console.error('Error saving progress to Supabase:', error);
@@ -171,9 +175,42 @@ export default function CandyCrushGame() {
   
   // Auto-save progress periodically
   useEffect(() => {
-    const interval = setInterval(saveProgress, 10000); // Save every 10 seconds
+    const interval = setInterval(() => saveProgress(), 10000); // Save every 10 seconds
     return () => clearInterval(interval);
   }, [saveProgress]);
+  
+  // Realtime sync for multi-device support
+  useEffect(() => {
+    if (!userId) return;
+    
+    const channel = supabase
+      .channel('candy-crush-sync')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'candy_crush_progress',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log('Realtime update:', payload);
+          if (payload.new && payload.new.user_id === userId) {
+            const data = payload.new as any;
+            setHighestLevelCompleted(data.highest_level || 0);
+            if (data.inventory) {
+              setInventory(data.inventory);
+            }
+            setShowTutorial(!data.tutorial_completed);
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
   
   // Particle effect helper
   const addParticle = (x: number, y: number, type: ParticleType) => {
@@ -603,8 +640,9 @@ export default function CandyCrushGame() {
         playSound('win');
         
         // Update highest level completed
+        const newHighestLevel = Math.max(prev.level, highestLevelCompleted);
         if (prev.level > highestLevelCompleted) {
-          setHighestLevelCompleted(prev.level);
+          setHighestLevelCompleted(newHighestLevel);
           
           // Track achievement for level completion
           if (prev.level === 10) {
@@ -612,10 +650,10 @@ export default function CandyCrushGame() {
           } else if (prev.level === 20) {
             trackAchievement('level_20_complete');
           }
+          
+          // Save progress with the new level
+          setTimeout(() => saveProgress(newHighestLevel), 100);
         }
-        
-        // Save progress immediately (after state updates)
-        setTimeout(() => saveProgress(), 0);
         
         // Check if final level
         if (prev.level === 20) {
@@ -1034,7 +1072,17 @@ export default function CandyCrushGame() {
                 Map
               </Button>
               {gameState.level < 20 && (
-                <Button onClick={() => { setHighestLevelCompleted(prev => Math.max(prev, gameState.level)); startLevel(gameState.level + 1); }} className="flex-1">
+                <Button 
+                  onClick={() => {
+                    const nextLevel = gameState.level + 1;
+                    const newHighest = Math.max(highestLevelCompleted, gameState.level);
+                    setHighestLevelCompleted(newHighest);
+                    saveProgress(newHighest).then(() => {
+                      startLevel(nextLevel);
+                    });
+                  }} 
+                  className="flex-1"
+                >
                   Màn tiếp theo
                 </Button>
               )}
