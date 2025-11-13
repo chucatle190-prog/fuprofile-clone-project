@@ -40,6 +40,8 @@ const Intro = () => {
         src={introVideo}
         className="h-full w-full object-contain"
         onEnded={handleVideoEnd}
+        autoPlay
+        muted
         playsInline
       />
       
