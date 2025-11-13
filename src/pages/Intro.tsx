@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Volume2, VolumeX } from "lucide-react";
 import introVideo from "@/assets/intro-video.mov";
 import logoAnimated from "@/assets/logo-animated.mp4";
 
@@ -10,6 +11,7 @@ const Intro = () => {
   const [showSkip, setShowSkip] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
     // Try to auto-play video with sound first
@@ -49,6 +51,13 @@ const Intro = () => {
     }, 500);
   };
 
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
+
   return (
     <div className={`relative h-screen w-screen overflow-hidden bg-black transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
       <video
@@ -82,7 +91,15 @@ const Intro = () => {
       </div>
       
       {showSkip && (
-        <div className="absolute top-8 right-8 animate-fade-in">
+        <div className="absolute top-8 right-8 flex gap-2 animate-fade-in">
+          <Button
+            onClick={toggleMute}
+            variant="outline"
+            size="icon"
+            className="bg-background/80 backdrop-blur-sm hover:bg-background/90 transition-all"
+          >
+            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </Button>
           <Button
             onClick={handleSkip}
             variant="outline"
