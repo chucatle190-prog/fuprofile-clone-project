@@ -9,15 +9,30 @@ const Intro = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [showSkip, setShowSkip] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
+  const [videoError, setVideoError] = useState(false);
 
   useEffect(() => {
-    // Auto-play video
+    // Auto-play video with error handling
     if (videoRef.current) {
-      videoRef.current.play().catch(err => {
-        console.log("Auto-play prevented:", err);
-      });
+      const playPromise = videoRef.current.play();
+      
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.log("Auto-play prevented:", err);
+          // If autoplay fails, try with muted
+          if (videoRef.current) {
+            videoRef.current.muted = true;
+            videoRef.current.play().catch(e => {
+              console.error("Video play failed:", e);
+              setVideoError(true);
+              // Skip to auth after 2 seconds if video fails
+              setTimeout(() => navigate("/auth"), 2000);
+            });
+          }
+        });
+      }
     }
-  }, []);
+  }, [navigate]);
 
   const handleVideoEnd = () => {
     setFadeOut(true);
@@ -40,8 +55,16 @@ const Intro = () => {
         src={introVideo}
         className="h-full w-full object-contain"
         onEnded={handleVideoEnd}
+        onError={(e) => {
+          console.error("Video error:", e);
+          setVideoError(true);
+          setTimeout(() => navigate("/auth"), 2000);
+        }}
+        onLoadedData={() => console.log("Video loaded successfully")}
         autoPlay
+        muted
         playsInline
+        preload="auto"
       />
       
       {/* Logo & Text Overlay */}
