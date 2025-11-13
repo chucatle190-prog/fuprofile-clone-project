@@ -35,7 +35,7 @@ export const GAME_CONFIG = {
 export const FU_TOKEN_CONFIG = {
   CONTRACT_ADDRESS: '0x8bD5796A709663BDC2279b87fFdA3214f0ea078B',
   DECIMALS: 18,
-  SYMBOL: 'F.U',
+  SYMBOL: 'F.U Token',
   NAME: 'Fun Profile Token',
 };
 
