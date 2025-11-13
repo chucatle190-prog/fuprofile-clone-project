@@ -288,7 +288,12 @@ export default function CandyCrushGame() {
 
   const startLevel = (levelNum: number) => {
     // Check if level is locked
-    if (levelNum > 1 && levelNum > highestLevelCompleted + 1) {
+    // Allow next level if current level is won OR if highestLevelCompleted allows it
+    const canPlayLevel = levelNum === 1 || 
+                         levelNum <= highestLevelCompleted + 1 ||
+                         (gameState.gameStatus === 'won' && levelNum === gameState.level + 1);
+    
+    if (!canPlayLevel) {
       toast({
         title: "Màn bị khóa! 🔒",
         description: `Hoàn thành màn ${levelNum - 1} trước`,
@@ -595,6 +600,9 @@ export default function CandyCrushGame() {
       return;
     }
 
+    // Play sound for successful swap
+    playSound('match');
+    
     setGrid([...engine.grid]);
     setGameState(prev => ({ ...prev, moves: prev.moves - 1 }));
     
@@ -621,6 +629,10 @@ export default function CandyCrushGame() {
       }
       
       hadAnyMatches = true;
+      
+      // Play match sound when matches are found
+      playSound('match');
+      
       const score = engine.clearMatches(matches);
       totalScore += score;
       setGrid([...engine.grid]);
