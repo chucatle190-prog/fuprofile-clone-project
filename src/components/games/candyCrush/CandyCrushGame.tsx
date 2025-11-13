@@ -95,35 +95,45 @@ export default function CandyCrushGame() {
   useEffect(() => {
     const loadProgress = async () => {
       // Load from localStorage
-      const saved = localStorage.getItem('candyCrushProgress');
-      if (saved) {
+      const savedProgress = localStorage.getItem('candyCrushProgress');
+      if (savedProgress) {
         try {
-          const data = JSON.parse(saved);
+          const data = JSON.parse(savedProgress);
+          console.log('Loaded progress from localStorage:', data);
           setHighestLevelCompleted(data.highestLevelCompleted || 0);
-          setInventory(data.inventory || inventory);
+          setInventory(data.inventory || {
+            THUNDER_HAMMER: 0,
+            RAINBOW: 0,
+            ROYAL_WIND: 0,
+            EXTRA_MOVES: 0,
+            ICE_BREAKER: 0,
+          });
           setShowTutorial(!data.tutorialCompleted);
-        } catch (e) {
-          console.error('Error loading progress:', e);
+        } catch (error) {
+          console.error('Error loading progress from localStorage:', error);
         }
-      } else {
-        setShowTutorial(true);
       }
       
       // Load from Supabase if user is logged in
       if (userId) {
         try {
           // @ts-ignore - Table will exist after migration
-          const { data } = await (supabase as any)
+          const { data, error } = await (supabase as any)
             .from('candy_crush_progress')
             .select('*')
             .eq('user_id', userId)
             .single();
           
-          if (data) {
+          if (data && !error) {
+            console.log('Loaded progress from Supabase:', data);
             setHighestLevelCompleted(data.highest_level || 0);
-            if (data.inventory) {
-              setInventory(data.inventory);
-            }
+            setInventory(data.inventory || {
+              THUNDER_HAMMER: 0,
+              RAINBOW: 0,
+              ROYAL_WIND: 0,
+              EXTRA_MOVES: 0,
+              ICE_BREAKER: 0,
+            });
             setShowTutorial(!data.tutorial_completed);
           }
         } catch (error) {
@@ -139,6 +149,8 @@ export default function CandyCrushGame() {
   const saveProgress = useCallback(async (levelCompleted?: number) => {
     const levelToSave = levelCompleted !== undefined ? levelCompleted : highestLevelCompleted;
     
+    console.log('Saving progress. Level to save:', levelToSave, 'Current highestLevelCompleted:', highestLevelCompleted);
+    
     const progressData = {
       highestLevelCompleted: levelToSave,
       inventory,
@@ -147,6 +159,7 @@ export default function CandyCrushGame() {
     
     // Save to localStorage
     localStorage.setItem('candyCrushProgress', JSON.stringify(progressData));
+    console.log('Progress saved to localStorage:', progressData);
     
     // Save to Supabase if user is logged in
     if (userId) {
@@ -639,9 +652,10 @@ export default function CandyCrushGame() {
       if (princePosition[0] === princessPosition[0] && princePosition[1] === princessPosition[1]) {
         playSound('win');
         
-        // Update highest level completed
-        const newHighestLevel = Math.max(prev.level, highestLevelCompleted);
+        // Update highest level completed - fixed logic
         if (prev.level > highestLevelCompleted) {
+          const newHighestLevel = prev.level;
+          console.log('Level completed! Setting highestLevelCompleted to:', newHighestLevel);
           setHighestLevelCompleted(newHighestLevel);
           
           // Track achievement for level completion
@@ -651,8 +665,8 @@ export default function CandyCrushGame() {
             trackAchievement('level_20_complete');
           }
           
-          // Save progress with the new level
-          setTimeout(() => saveProgress(newHighestLevel), 100);
+          // Save progress immediately with the new level
+          saveProgress(newHighestLevel);
         }
         
         // Check if final level
