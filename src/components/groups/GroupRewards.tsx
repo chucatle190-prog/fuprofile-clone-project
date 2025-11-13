@@ -6,9 +6,7 @@ import { Gift, Coins, Wallet, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useMetaMask } from "@/hooks/useMetaMask";
-
-// F.U Token address on BSC Testnet
-const FU_TOKEN_ADDRESS = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1";
+import { FU_TOKEN_CONFIG } from "@/config/gameConfig";
 
 interface GroupRewardsProps {
   userId: string;
@@ -211,9 +209,9 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
         params: {
           type: 'ERC20',
           options: {
-            address: FU_TOKEN_ADDRESS,
-            symbol: 'F.U',
-            decimals: 18,
+            address: FU_TOKEN_CONFIG.CONTRACT_ADDRESS,
+            symbol: FU_TOKEN_CONFIG.SYMBOL,
+            decimals: FU_TOKEN_CONFIG.DECIMALS,
             image: 'https://via.placeholder.com/128', // Replace with actual token logo URL
           },
         },
