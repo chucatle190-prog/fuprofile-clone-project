@@ -1,4 +1,4 @@
-import { Home, ShoppingBag, MessageCircle, Bell, User as UserIcon } from "lucide-react";
+import { Home, Users, ShoppingBag, MessageCircle, Bell, User as UserIcon } from "lucide-react";
 import { NavLink } from "./NavLink";
 import { Badge } from "./ui/badge";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
@@ -18,8 +18,17 @@ const MobileNav = ({ user }: MobileNavProps) => {
           className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-primary transition-colors"
           activeClassName="text-primary"
         >
-          <Home className="h-6 w-6" />
-          <span className="text-xs mt-0.5">Trang chủ</span>
+          <Home className="h-5 w-5" />
+          <span className="text-[10px] mt-0.5">Trang chủ</span>
+        </NavLink>
+        
+        <NavLink
+          to="/groups"
+          className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-primary transition-colors"
+          activeClassName="text-primary"
+        >
+          <Users className="h-5 w-5" />
+          <span className="text-[10px] mt-0.5">Nhóm</span>
         </NavLink>
         
         <NavLink
@@ -27,8 +36,8 @@ const MobileNav = ({ user }: MobileNavProps) => {
           className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-primary transition-colors"
           activeClassName="text-primary"
         >
-          <ShoppingBag className="h-6 w-6" />
-          <span className="text-xs mt-0.5">Chợ</span>
+          <ShoppingBag className="h-5 w-5" />
+          <span className="text-[10px] mt-0.5">Chợ</span>
         </NavLink>
         
         <NavLink
@@ -36,8 +45,8 @@ const MobileNav = ({ user }: MobileNavProps) => {
           className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-primary transition-colors"
           activeClassName="text-primary"
         >
-          <MessageCircle className="h-6 w-6" />
-          <span className="text-xs mt-0.5">Chat</span>
+          <MessageCircle className="h-5 w-5" />
+          <span className="text-[10px] mt-0.5">Chat</span>
         </NavLink>
         
         <NavLink
@@ -45,13 +54,13 @@ const MobileNav = ({ user }: MobileNavProps) => {
           className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-primary transition-colors relative"
           activeClassName="text-primary"
         >
-          <Bell className="h-6 w-6" />
+          <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <Badge className="absolute top-1 right-[calc(50%-12px)] h-4 w-4 flex items-center justify-center p-0 text-[10px]">
               {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>
           )}
-          <span className="text-xs mt-0.5">Thông báo</span>
+          <span className="text-[10px] mt-0.5">Thông báo</span>
         </NavLink>
         
         <NavLink
@@ -59,8 +68,8 @@ const MobileNav = ({ user }: MobileNavProps) => {
           className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-primary transition-colors"
           activeClassName="text-primary"
         >
-          <UserIcon className="h-6 w-6" />
-          <span className="text-xs mt-0.5">Cá nhân</span>
+          <UserIcon className="h-5 w-5" />
+          <span className="text-[10px] mt-0.5">Cá nhân</span>
         </NavLink>
       </div>
     </nav>
