@@ -12,18 +12,19 @@ const Intro = () => {
   const [videoError, setVideoError] = useState(false);
 
   useEffect(() => {
-    // Auto-play video with error handling
+    // Try to auto-play video with sound first
     if (videoRef.current) {
+      videoRef.current.muted = false; // Try with sound first
       const playPromise = videoRef.current.play();
       
       if (playPromise !== undefined) {
         playPromise.catch(err => {
-          console.log("Auto-play prevented:", err);
-          // If autoplay fails, try with muted
+          console.log("Auto-play with sound prevented, trying muted:", err);
+          // If autoplay with sound fails, fallback to muted
           if (videoRef.current) {
             videoRef.current.muted = true;
             videoRef.current.play().catch(e => {
-              console.error("Video play failed:", e);
+              console.error("Video play failed completely:", e);
               setVideoError(true);
               // Skip to auth after 2 seconds if video fails
               setTimeout(() => navigate("/auth"), 2000);
@@ -61,8 +62,6 @@ const Intro = () => {
           setTimeout(() => navigate("/auth"), 2000);
         }}
         onLoadedData={() => console.log("Video loaded successfully")}
-        autoPlay
-        muted
         playsInline
         preload="auto"
       />
