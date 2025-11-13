@@ -287,20 +287,19 @@ export default function CandyCrushGame() {
   }, [princePosition, princessPosition, engine, princeMoving]);
 
   const startLevel = (levelNum: number) => {
-    // Check if level is locked
-    // Allow next level if current level is won OR if highestLevelCompleted allows it
-    const canPlayLevel = levelNum === 1 || 
-                         levelNum <= highestLevelCompleted + 1 ||
-                         (gameState.gameStatus === 'won' && levelNum === gameState.level + 1);
-    
-    if (!canPlayLevel) {
-      toast({
-        title: "Màn bị khóa! 🔒",
-        description: `Hoàn thành màn ${levelNum - 1} trước`,
-        variant: "destructive",
-      });
-      return;
-    }
+    // All levels unlocked for testing
+    // const canPlayLevel = levelNum === 1 || 
+    //                      levelNum <= highestLevelCompleted + 1 ||
+    //                      (gameState.gameStatus === 'won' && levelNum === gameState.level + 1);
+    // 
+    // if (!canPlayLevel) {
+    //   toast({
+    //     title: "Màn bị khóa! 🔒",
+    //     description: `Hoàn thành màn ${levelNum - 1} trước`,
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
     
     const levelConfig = GAME_CONFIG.LEVELS[levelNum - 1];
     engine.grid = engine.initializeGrid();
@@ -759,7 +758,7 @@ export default function CandyCrushGame() {
             
             <div className="grid grid-cols-4 sm:grid-cols-5 gap-4 mb-6">
               {GAME_CONFIG.LEVELS.map((level, idx) => {
-                const isLocked = idx > 0 && idx > highestLevelCompleted;
+                const isLocked = false; // All levels unlocked
                 const isCompleted = idx < highestLevelCompleted;
                 
                 return (
