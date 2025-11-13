@@ -918,30 +918,30 @@ export default function CandyCrushGame() {
         </div>
       </div>
 
-      {/* Toolbelt - Fixed Bottom Right */}
-      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+      {/* Toolbelt - Responsive Layout */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50">
         {toolMode === 'antiIce' && selectedIceCells.length > 0 && (
           <Button 
             onClick={applyAntiIce}
             size="lg"
-            className="w-full bg-blue-600 hover:bg-blue-700"
+            className="w-full bg-blue-600 hover:bg-blue-700 mb-2"
           >
             Xác nhận ({selectedIceCells.length}/5)
           </Button>
         )}
         
-        <Card className="p-3 bg-white/95 backdrop-blur-sm shadow-2xl">
-          <div className="space-y-2 w-20 sm:w-24">
+        <Card className="p-2 md:p-3 bg-white/95 backdrop-blur-sm shadow-2xl">
+          <div className="flex flex-row gap-2 md:flex-col md:space-y-2 md:w-24">
             {/* Thunder Hammer */}
             <div className="relative">
               <Button
                 onClick={() => inventory.THUNDER_HAMMER > 0 ? activateTool('hammer', 'THUNDER_HAMMER') : setShowShop(true)}
                 disabled={isAnimating || (toolMode !== 'none' && toolMode !== 'hammer')}
-                className="w-full h-16 flex flex-col items-center justify-center gap-1 p-1"
+                className="w-14 h-14 md:w-full md:h-16 flex flex-col items-center justify-center gap-1 p-1"
                 variant={toolMode === 'hammer' ? 'default' : 'outline'}
               >
-                <Zap className="w-6 h-6" />
-                <span className="text-xs">Búa</span>
+                <Zap className="w-5 h-5 md:w-6 md:h-6" />
+                <span className="text-[10px] md:text-xs">Búa</span>
               </Button>
               {inventory.THUNDER_HAMMER > 0 && (
                 <Badge className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0">
@@ -955,11 +955,11 @@ export default function CandyCrushGame() {
               <Button
                 onClick={() => inventory.RAINBOW > 0 ? activateTool('rainbow', 'RAINBOW') : setShowShop(true)}
                 disabled={isAnimating || (toolMode !== 'none' && toolMode !== 'rainbow')}
-                className="w-full h-16 flex flex-col items-center justify-center gap-1 p-1"
+                className="w-14 h-14 md:w-full md:h-16 flex flex-col items-center justify-center gap-1 p-1"
                 variant={toolMode === 'rainbow' ? 'default' : 'outline'}
               >
-                <Rainbow className="w-6 h-6" />
-                <span className="text-xs">Vồng</span>
+                <Rainbow className="w-5 h-5 md:w-6 md:h-6" />
+                <span className="text-[10px] md:text-xs">Vồng</span>
               </Button>
               {inventory.RAINBOW > 0 && (
                 <Badge className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0">
@@ -980,11 +980,11 @@ export default function CandyCrushGame() {
                   }
                 }}
                 disabled={isAnimating || (toolMode !== 'none' && toolMode !== 'windRow' && toolMode !== 'windCol')}
-                className="w-full h-16 flex flex-col items-center justify-center gap-1 p-1"
+                className="w-14 h-14 md:w-full md:h-16 flex flex-col items-center justify-center gap-1 p-1"
                 variant={toolMode === 'windRow' || toolMode === 'windCol' ? 'default' : 'outline'}
               >
-                <Wind className="w-6 h-6" />
-                <span className="text-xs">Gió</span>
+                <Wind className="w-5 h-5 md:w-6 md:h-6" />
+                <span className="text-[10px] md:text-xs">Gió</span>
               </Button>
               {inventory.ROYAL_WIND > 0 && (
                 <Badge className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0">
@@ -1010,11 +1010,11 @@ export default function CandyCrushGame() {
               <Button
                 onClick={() => inventory.EXTRA_MOVES > 0 ? activateTool('addMoves', 'EXTRA_MOVES') : setShowShop(true)}
                 disabled={isAnimating}
-                className="w-full h-16 flex flex-col items-center justify-center gap-1 p-1"
+                className="w-14 h-14 md:w-full md:h-16 flex flex-col items-center justify-center gap-1 p-1"
                 variant="outline"
               >
-                <Plus className="w-6 h-6" />
-                <span className="text-xs">+5</span>
+                <Plus className="w-5 h-5 md:w-6 md:h-6" />
+                <span className="text-[10px] md:text-xs">+5</span>
               </Button>
               {inventory.EXTRA_MOVES > 0 && (
                 <Badge className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0">
@@ -1028,11 +1028,11 @@ export default function CandyCrushGame() {
               <Button
                 onClick={() => inventory.ICE_BREAKER > 0 ? activateTool('antiIce', 'ICE_BREAKER') : setShowShop(true)}
                 disabled={isAnimating || (toolMode !== 'none' && toolMode !== 'antiIce')}
-                className="w-full h-16 flex flex-col items-center justify-center gap-1 p-1"
+                className="w-14 h-14 md:w-full md:h-16 flex flex-col items-center justify-center gap-1 p-1"
                 variant={toolMode === 'antiIce' ? 'default' : 'outline'}
               >
-                <Snowflake className="w-6 h-6" />
-                <span className="text-xs">Băng</span>
+                <Snowflake className="w-5 h-5 md:w-6 md:h-6" />
+                <span className="text-[10px] md:text-xs">Băng</span>
               </Button>
               {inventory.ICE_BREAKER > 0 && (
                 <Badge className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0">
