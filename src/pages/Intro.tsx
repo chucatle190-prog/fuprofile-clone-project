@@ -44,20 +44,18 @@ const Intro = () => {
       />
       
       {/* Logo & Text Overlay */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none animate-fade-in">
-        <div className="flex flex-col items-center gap-4">
-          <video
-            src={logoAnimated}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-32 h-32 object-contain drop-shadow-[0_0_30px_rgba(234,179,8,0.6)]"
-          />
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-[hsl(142,70%,45%)] to-[hsl(45,93%,47%)] bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(234,179,8,0.5)]">
-            FUN Profile
-          </h1>
-        </div>
+      <div className="absolute top-8 left-8 flex items-center gap-3 pointer-events-none animate-fade-in">
+        <video
+          src={logoAnimated}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-12 h-12 object-contain drop-shadow-[0_0_15px_rgba(234,179,8,0.6)]"
+        />
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-[hsl(142,70%,45%)] to-[hsl(45,93%,47%)] bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]">
+          FUN Profile
+        </h1>
       </div>
       
       {showSkip && (
