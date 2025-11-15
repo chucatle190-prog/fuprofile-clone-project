@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PoolPhysics, Ball } from '@/utils/poolPhysics';
@@ -290,8 +291,7 @@ const EightBallPool = () => {
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     setAimAngle(angle);
-    // Power based on how far you drag - easier to get more power
-    setPower(Math.min(distance / 2.5, 30));
+    // Power is controlled by the slider now
     setMousePos({ x, y });
   };
 
@@ -301,29 +301,6 @@ const EightBallPool = () => {
 
     setIsAiming(false);
     setIsDragging(false);
-
-    if (power > 1) {
-      physicsRef.current.shootCueBall(power, aimAngle);
-      setGameState((prev) => ({ ...prev, shooting: true }));
-
-      // Update game state in database
-      await supabase
-        .from('pool_games')
-        .update({
-          game_state: {
-            balls: physicsRef.current.balls,
-            shooting: true,
-          } as any,
-        })
-        .eq('id', poolGame.id);
-
-      toast({
-        title: 'Đã đánh! 🎱',
-        description: `Sức mạnh: ${Math.round(power)}`,
-      });
-    }
-
-    setPower(0);
   };
 
   const handleTurnEnd = async () => {
@@ -358,6 +335,30 @@ const EightBallPool = () => {
     if (poolGame.current_player === 1 && isPlayer2) return true;
     
     return false;
+  };
+
+  const handleShoot = async () => {
+    if (!physicsRef.current || !poolGame) return;
+    if (!isMyTurn() || gameState.shooting) return;
+
+    const shotPower = Math.max(1, Math.min(power, 30));
+    physicsRef.current.shootCueBall(shotPower, aimAngle);
+    setGameState((prev) => ({ ...prev, shooting: true }));
+
+    await supabase
+      .from('pool_games')
+      .update({
+        game_state: {
+          balls: physicsRef.current.balls,
+          shooting: true,
+        } as any,
+      })
+      .eq('id', poolGame.id);
+
+    toast({
+      title: 'Đã đánh! 🎱',
+      description: `Sức mạnh: ${Math.round(shotPower)}`,
+    });
   };
 
   // Calculate trajectory prediction
@@ -794,7 +795,7 @@ const EightBallPool = () => {
               </div>
               <div className="space-y-1">
                 <div className="text-sm text-muted-foreground">
-                  {isMyTurn() ? 'Nhấn gần bi trắng và kéo để nhắm - Kéo xa = lực mạnh' : 'Chờ đối thủ đánh'}
+                  {isMyTurn() ? 'Kéo trên bàn để nhắm • Dùng slider để chọn lực' : 'Chờ đối thủ đánh'}
                 </div>
                 {isMyTurn() && !gameState.shooting && (
                   <div className="flex items-center gap-2 text-sm">
@@ -832,6 +833,39 @@ const EightBallPool = () => {
                     {currentUserId === poolGame.player2_id && <span className="text-xs">(Bạn)</span>}
                   </div>
                   <div className="text-sm text-muted-foreground">Bi sọc (9-15)</div>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <h3 className="font-semibold mb-4">Điều khiển</h3>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-end gap-4">
+                  <div className="h-48 flex items-center">
+                    <Slider
+                      orientation="vertical"
+                      max={100}
+                      min={0}
+                      value={[Math.round((power / 30) * 100)]}
+                      onValueChange={(v) => setPower((v[0] / 100) * 30)}
+                      className="h-48"
+                    />
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Lực: <span className="font-semibold text-foreground">{Math.round((power / 30) * 100)}%</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <Button
+                    onClick={handleShoot}
+                    disabled={!isMyTurn() || gameState.shooting}
+                    className="hover-scale"
+                  >
+                    Đánh 🎯
+                  </Button>
+                  <div className="text-xs text-muted-foreground">
+                    Kéo slider để chọn lực, nhấn Đánh để bắn
+                  </div>
                 </div>
               </div>
             </Card>
