@@ -50,6 +50,8 @@ const EightBallPool = () => {
   const [aimAngle, setAimAngle] = useState(0);
   const [power, setPower] = useState(0);
   const [isAiming, setIsAiming] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [cuePosition, setCuePosition] = useState({ x: 0, y: 0 });
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   // Get current user and initialize/join game
@@ -208,7 +210,7 @@ const EightBallPool = () => {
 
   // Handle mouse/touch for aiming
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (gameState.shooting || !physicsRef.current) return;
+    if (gameState.shooting || !physicsRef.current || !isMyTurn()) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -217,12 +219,26 @@ const EightBallPool = () => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    setMousePos({ x, y });
-    setIsAiming(true);
+    const cueBall = physicsRef.current.getCueBall();
+    if (!cueBall) return;
+
+    // Check if click is near cue ball area
+    const dx = x - cueBall.x;
+    const dy = y - cueBall.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance < 150) {
+      setMousePos({ x, y });
+      setIsAiming(true);
+      setIsDragging(true);
+      const angle = Math.atan2(dy, dx);
+      setAimAngle(angle);
+      setCuePosition({ x: cueBall.x, y: cueBall.y });
+    }
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isAiming || !physicsRef.current) return;
+    if (!isAiming || !physicsRef.current || !isDragging) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -240,7 +256,8 @@ const EightBallPool = () => {
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     setAimAngle(angle);
-    setPower(Math.min(distance / 3, 20));
+    // Power based on how far you drag (max 25)
+    setPower(Math.min(distance / 4, 25));
     setMousePos({ x, y });
   };
 
@@ -249,6 +266,7 @@ const EightBallPool = () => {
     if (!isMyTurn()) return;
 
     setIsAiming(false);
+    setIsDragging(false);
 
     if (power > 2) {
       physicsRef.current.shootCueBall(power, aimAngle);
@@ -361,31 +379,82 @@ const EightBallPool = () => {
       ctx.stroke();
     });
 
-    // Draw aiming line
-    if (isAiming && !gameState.shooting) {
+    // Draw aiming system
+    if (isAiming && !gameState.shooting && isMyTurn()) {
       const cueBall = physics.getCueBall();
       if (cueBall) {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
+        // Draw aiming guideline (dotted line)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 5]);
         ctx.beginPath();
         ctx.moveTo(cueBall.x, cueBall.y);
-        const lineLength = power * 5;
+        const guideLength = 300;
         ctx.lineTo(
-          cueBall.x + Math.cos(aimAngle) * lineLength,
-          cueBall.y + Math.sin(aimAngle) * lineLength
+          cueBall.x + Math.cos(aimAngle) * guideLength,
+          cueBall.y + Math.sin(aimAngle) * guideLength
         );
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Draw power indicator
-        ctx.fillStyle = `rgba(255, ${255 - power * 10}, 0, 0.7)`;
-        ctx.fillRect(10, canvas.height - 30, power * 10, 20);
+        // Draw cue stick
+        const cueLength = 150 + power * 3;
+        const cueStartX = cueBall.x - Math.cos(aimAngle) * (50 + power * 2);
+        const cueStartY = cueBall.y - Math.sin(aimAngle) * (50 + power * 2);
+        const cueEndX = cueBall.x - Math.cos(aimAngle) * cueLength;
+        const cueEndY = cueBall.y - Math.sin(aimAngle) * cueLength;
+
+        // Cue stick gradient
+        const gradient = ctx.createLinearGradient(cueStartX, cueStartY, cueEndX, cueEndY);
+        gradient.addColorStop(0, '#D2691E');
+        gradient.addColorStop(0.7, '#8B4513');
+        gradient.addColorStop(1, '#654321');
+
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 8;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(cueStartX, cueStartY);
+        ctx.lineTo(cueEndX, cueEndY);
+        ctx.stroke();
+
+        // Cue tip
+        ctx.fillStyle = '#4169E1';
+        ctx.beginPath();
+        ctx.arc(cueStartX, cueStartY, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw power bar at bottom
+        const barWidth = 250;
+        const barHeight = 30;
+        const barX = (canvas.width - barWidth) / 2;
+        const barY = canvas.height - 50;
+
+        // Power bar background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(barX - 5, barY - 5, barWidth + 10, barHeight + 10);
+
+        // Power bar fill
+        const powerPercent = Math.min(power / 25, 1);
+        const powerGradient = ctx.createLinearGradient(barX, 0, barX + barWidth * powerPercent, 0);
+        powerGradient.addColorStop(0, '#00FF00');
+        powerGradient.addColorStop(0.5, '#FFFF00');
+        powerGradient.addColorStop(1, '#FF0000');
+        
+        ctx.fillStyle = powerGradient;
+        ctx.fillRect(barX, barY, barWidth * powerPercent, barHeight);
+
+        // Power bar border
         ctx.strokeStyle = '#FFFFFF';
-        ctx.strokeRect(10, canvas.height - 30, 200, 20);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+        // Power text
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = '12px Arial';
-        ctx.fillText('Sức mạnh', 10, canvas.height - 35);
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Lực: ${Math.round(power)}`, canvas.width / 2, barY - 10);
+        ctx.fillText('Kéo cần gạt để điều chỉnh lực', canvas.width / 2, barY + barHeight + 20);
       }
     }
   };
@@ -494,7 +563,7 @@ const EightBallPool = () => {
                 )}
               </div>
               <div className="text-sm text-muted-foreground">
-                {isMyTurn() ? 'Kéo từ bi trắng để nhắm và đánh' : 'Chờ đối thủ đánh'}
+                {isMyTurn() ? 'Nhấn gần bi trắng và kéo để nhắm - Kéo xa = lực mạnh' : 'Chờ đối thủ đánh'}
               </div>
             </div>
           </Card>
@@ -530,10 +599,11 @@ const EightBallPool = () => {
             <Card className="p-4">
               <h3 className="font-semibold mb-2">Hướng dẫn</h3>
               <ul className="text-sm space-y-2 text-muted-foreground">
-                <li>• Kéo từ bi trắng để nhắm</li>
-                <li>• Kéo xa hơn = sức mạnh mạnh hơn</li>
-                <li>• Đưa tất cả bi của bạn vào lỗ</li>
-                <li>• Sau đó đưa bi số 8 vào lỗ để thắng</li>
+                <li>• Nhấn gần bi trắng và kéo cần gạt</li>
+                <li>• Kéo xa = lực mạnh hơn (tối đa 25)</li>
+                <li>• Thanh lực hiển thị độ mạnh</li>
+                <li>• Đưa bi của bạn vào lỗ</li>
+                <li>• Cuối cùng đưa bi số 8 vào để thắng</li>
               </ul>
             </Card>
 
