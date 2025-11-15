@@ -19,7 +19,7 @@ export interface Pocket {
   radius: number;
 }
 
-const FRICTION = 0.98;
+const FRICTION = 0.985;
 const BALL_RADIUS = 12;
 const POCKET_RADIUS = 20;
 
@@ -118,8 +118,8 @@ export class PoolPhysics {
       ball.vy *= FRICTION;
 
       // Stop if velocity is too low
-      if (Math.abs(ball.vx) < 0.1) ball.vx = 0;
-      if (Math.abs(ball.vy) < 0.1) ball.vy = 0;
+      if (Math.abs(ball.vx) < 0.05) ball.vx = 0;
+      if (Math.abs(ball.vy) < 0.05) ball.vy = 0;
 
       // Wall collisions
       if (ball.x - ball.radius < 0 || ball.x + ball.radius > this.tableWidth) {
@@ -193,7 +193,7 @@ export class PoolPhysics {
   }
 
   isMoving(): boolean {
-    return this.balls.some((ball) => !ball.pocketed && (Math.abs(ball.vx) > 0.1 || Math.abs(ball.vy) > 0.1));
+    return this.balls.some((ball) => !ball.pocketed && (Math.abs(ball.vx) > 0.05 || Math.abs(ball.vy) > 0.05));
   }
 
   getCueBall(): Ball | undefined {
@@ -204,7 +204,9 @@ export class PoolPhysics {
     const cueBall = this.getCueBall();
     if (!cueBall) return;
 
-    cueBall.vx = Math.cos(angle) * power;
-    cueBall.vy = Math.sin(angle) * power;
+    // Increase power multiplier for stronger shots
+    const powerMultiplier = 1.5;
+    cueBall.vx = Math.cos(angle) * power * powerMultiplier;
+    cueBall.vy = Math.sin(angle) * power * powerMultiplier;
   }
 }
