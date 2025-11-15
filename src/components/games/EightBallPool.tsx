@@ -4,8 +4,9 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PoolPhysics, Ball } from '@/utils/poolPhysics';
-import { ArrowLeft, Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Users, Loader2 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 interface GameState {
   balls: Ball[];
@@ -15,11 +16,24 @@ interface GameState {
   shooting: boolean;
 }
 
+interface PoolGame {
+  id: string;
+  group_id: string;
+  player1_id: string;
+  player2_id: string | null;
+  current_player: number;
+  game_state: any;
+  status: 'waiting' | 'active' | 'completed';
+  winner_id: string | null;
+}
+
 const EightBallPool = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const physicsRef = useRef<PoolPhysics | null>(null);
   const animationRef = useRef<number>();
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const navigate = useNavigate();
+  const { groupId } = useParams<{ groupId: string }>();
   const { toast } = useToast();
 
   const [gameState, setGameState] = useState<GameState>({
@@ -30,13 +44,89 @@ const EightBallPool = () => {
     shooting: false,
   });
 
+  const [poolGame, setPoolGame] = useState<PoolGame | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
   const [aimAngle, setAimAngle] = useState(0);
   const [power, setPower] = useState(0);
   const [isAiming, setIsAiming] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  // Initialize game
+  // Get current user and initialize/join game
   useEffect(() => {
+    const initGame = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast({
+            title: 'Lỗi',
+            description: 'Bạn cần đăng nhập để chơi',
+            variant: 'destructive',
+          });
+          navigate(-1);
+          return;
+        }
+
+        setCurrentUserId(user.id);
+
+        // Check for existing waiting game
+        const { data: waitingGames } = await supabase
+          .from('pool_games')
+          .select('*')
+          .eq('group_id', groupId)
+          .eq('status', 'waiting')
+          .is('player2_id', null)
+          .limit(1);
+
+        if (waitingGames && waitingGames.length > 0) {
+          // Join existing game
+          const game = waitingGames[0];
+          const { error } = await supabase
+            .from('pool_games')
+            .update({
+              player2_id: user.id,
+              status: 'active',
+            })
+            .eq('id', game.id);
+
+          if (error) throw error;
+
+          setPoolGame({ ...game, player2_id: user.id, status: 'active' } as PoolGame);
+        } else {
+          // Create new game
+          const { data: newGame, error } = await supabase
+            .from('pool_games')
+            .insert({
+              group_id: groupId!,
+              player1_id: user.id,
+              status: 'waiting',
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+          setPoolGame(newGame as PoolGame);
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error initializing game:', error);
+        toast({
+          title: 'Lỗi',
+          description: 'Không thể khởi tạo game',
+          variant: 'destructive',
+        });
+        navigate(-1);
+      }
+    };
+
+    initGame();
+  }, [groupId, navigate, toast]);
+
+  // Initialize canvas and physics
+  useEffect(() => {
+    if (!poolGame || poolGame.status !== 'active') return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -49,6 +139,7 @@ const EightBallPool = () => {
     setGameState((prev) => ({
       ...prev,
       balls: physicsRef.current!.balls,
+      gameId: poolGame.id,
     }));
 
     // Animation loop
@@ -60,11 +151,7 @@ const EightBallPool = () => {
 
       // Check if balls stopped moving
       if (!physicsRef.current.isMoving() && gameState.shooting) {
-        setGameState((prev) => ({
-          ...prev,
-          shooting: false,
-          currentPlayer: prev.currentPlayer === 0 ? 1 : 0,
-        }));
+        handleTurnEnd();
       }
 
       animationRef.current = requestAnimationFrame(animate);
@@ -77,7 +164,47 @@ const EightBallPool = () => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [gameState.shooting]);
+  }, [poolGame, gameState.shooting]);
+
+  // Setup realtime channel
+  useEffect(() => {
+    if (!poolGame) return;
+
+    const channel = supabase
+      .channel(`pool-game-${poolGame.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'pool_games',
+          filter: `id=eq.${poolGame.id}`,
+        },
+        (payload) => {
+          const updatedGame = payload.new as PoolGame;
+          setPoolGame(updatedGame);
+          
+          if (updatedGame.game_state?.balls && physicsRef.current) {
+            physicsRef.current.balls = updatedGame.game_state.balls;
+            setGameState((prev) => ({
+              ...prev,
+              currentPlayer: updatedGame.current_player,
+              shooting: updatedGame.game_state.shooting,
+              balls: updatedGame.game_state.balls,
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, [poolGame]);
 
   // Handle mouse/touch for aiming
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -117,14 +244,26 @@ const EightBallPool = () => {
     setMousePos({ x, y });
   };
 
-  const handlePointerUp = () => {
-    if (!isAiming || !physicsRef.current) return;
+  const handlePointerUp = async () => {
+    if (!isAiming || !physicsRef.current || !poolGame) return;
+    if (!isMyTurn()) return;
 
     setIsAiming(false);
 
     if (power > 2) {
       physicsRef.current.shootCueBall(power, aimAngle);
       setGameState((prev) => ({ ...prev, shooting: true }));
+
+      // Update game state in database
+      await supabase
+        .from('pool_games')
+        .update({
+          game_state: {
+            balls: physicsRef.current.balls,
+            shooting: true,
+          } as any,
+        })
+        .eq('id', poolGame.id);
 
       toast({
         title: 'Đã đánh! 🎱',
@@ -133,6 +272,40 @@ const EightBallPool = () => {
     }
 
     setPower(0);
+  };
+
+  const handleTurnEnd = async () => {
+    if (!poolGame || !physicsRef.current) return;
+
+    const nextPlayer = poolGame.current_player === 0 ? 1 : 0;
+    
+    await supabase
+      .from('pool_games')
+      .update({
+        current_player: nextPlayer,
+        game_state: {
+          balls: physicsRef.current.balls,
+          shooting: false,
+        } as any,
+      })
+      .eq('id', poolGame.id);
+
+    setGameState((prev) => ({
+      ...prev,
+      shooting: false,
+      currentPlayer: nextPlayer,
+    }));
+  };
+
+  const isMyTurn = () => {
+    if (!poolGame) return false;
+    const isPlayer1 = currentUserId === poolGame.player1_id;
+    const isPlayer2 = currentUserId === poolGame.player2_id;
+    
+    if (poolGame.current_player === 0 && isPlayer1) return true;
+    if (poolGame.current_player === 1 && isPlayer2) return true;
+    
+    return false;
   };
 
   const drawGame = (canvas: HTMLCanvasElement, physics: PoolPhysics) => {
@@ -217,18 +390,31 @@ const EightBallPool = () => {
     }
   };
 
-  const resetGame = () => {
-    if (!physicsRef.current) return;
+  const resetGame = async () => {
+    if (!physicsRef.current || !poolGame) return;
     
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     physicsRef.current = new PoolPhysics(canvas.width, canvas.height);
+    
+    await supabase
+      .from('pool_games')
+      .update({
+        current_player: 0,
+        game_state: {
+          balls: physicsRef.current.balls,
+          shooting: false,
+        } as any,
+        status: 'active',
+      })
+      .eq('id', poolGame.id);
+
     setGameState({
       balls: physicsRef.current.balls,
       currentPlayer: 0,
       players: [],
-      gameId: '',
+      gameId: poolGame.id,
       shooting: false,
     });
 
@@ -237,6 +423,35 @@ const EightBallPool = () => {
       description: 'Chúc may mắn!',
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 flex items-center justify-center">
+        <Card className="p-8">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-lg font-semibold">Đang tìm đối thủ...</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!poolGame || poolGame.status === 'waiting') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 flex items-center justify-center">
+        <Card className="p-8">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-lg font-semibold">Đang chờ người chơi thứ 2...</p>
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              Hủy
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 p-4">
@@ -268,14 +483,18 @@ const EightBallPool = () => {
               <div className="text-sm">
                 {gameState.shooting ? (
                   <span className="text-muted-foreground">Đang đánh...</span>
-                ) : (
+                ) : isMyTurn() ? (
                   <span className="text-primary font-semibold">
-                    Lượt của người chơi {gameState.currentPlayer + 1}
+                    Lượt của bạn 🎯
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    Đang chờ đối thủ...
                   </span>
                 )}
               </div>
               <div className="text-sm text-muted-foreground">
-                Kéo từ bi trắng để nhắm và đánh
+                {isMyTurn() ? 'Kéo từ bi trắng để nhắm và đánh' : 'Chờ đối thủ đánh'}
               </div>
             </div>
           </Card>
@@ -287,12 +506,22 @@ const EightBallPool = () => {
                 Người chơi
               </h3>
               <div className="space-y-2">
-                <div className={`p-3 rounded-lg ${gameState.currentPlayer === 0 ? 'bg-primary/20' : 'bg-muted'}`}>
-                  <div className="font-semibold">Người chơi 1</div>
+                <div className={`p-3 rounded-lg ${
+                  poolGame.current_player === 0 ? 'bg-primary/20' : 'bg-muted'
+                }`}>
+                  <div className="font-semibold flex items-center gap-2">
+                    Người chơi 1
+                    {currentUserId === poolGame.player1_id && <span className="text-xs">(Bạn)</span>}
+                  </div>
                   <div className="text-sm text-muted-foreground">Bi đặc (1-7)</div>
                 </div>
-                <div className={`p-3 rounded-lg ${gameState.currentPlayer === 1 ? 'bg-primary/20' : 'bg-muted'}`}>
-                  <div className="font-semibold">Người chơi 2</div>
+                <div className={`p-3 rounded-lg ${
+                  poolGame.current_player === 1 ? 'bg-primary/20' : 'bg-muted'
+                }`}>
+                  <div className="font-semibold flex items-center gap-2">
+                    Người chơi 2
+                    {currentUserId === poolGame.player2_id && <span className="text-xs">(Bạn)</span>}
+                  </div>
                   <div className="text-sm text-muted-foreground">Bi sọc (9-15)</div>
                 </div>
               </div>

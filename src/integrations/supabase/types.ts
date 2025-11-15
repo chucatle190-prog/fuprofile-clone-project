@@ -725,6 +725,53 @@ export type Database = {
         }
         Relationships: []
       }
+      pool_games: {
+        Row: {
+          created_at: string
+          current_player: number | null
+          game_state: Json
+          group_id: string
+          id: string
+          player1_id: string
+          player2_id: string | null
+          status: string | null
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_player?: number | null
+          game_state?: Json
+          group_id: string
+          id?: string
+          player1_id: string
+          player2_id?: string | null
+          status?: string | null
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_player?: number | null
+          game_state?: Json
+          group_id?: string
+          id?: string
+          player1_id?: string
+          player2_id?: string | null
+          status?: string | null
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pool_games_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           content: string

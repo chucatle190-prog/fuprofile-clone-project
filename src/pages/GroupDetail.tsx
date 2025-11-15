@@ -516,11 +516,12 @@ const GroupDetail = () => {
                 />
               ) : showLeaderboard ? (
                 <Tabs defaultValue="spin" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+                  <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
                     <TabsTrigger value="spin">Vòng Quay</TabsTrigger>
                     <TabsTrigger value="puzzle">Ghép Chữ</TabsTrigger>
                     <TabsTrigger value="memory">Ghép Hình</TabsTrigger>
                     <TabsTrigger value="candy">💖 Candy Crush</TabsTrigger>
+                    <TabsTrigger value="pool">🎱 8 Ball</TabsTrigger>
                   </TabsList>
                   <TabsContent value="spin">
                     <GameLeaderboard groupId={groupId!} gameType="spin_wheel" />
@@ -534,14 +535,25 @@ const GroupDetail = () => {
                   <TabsContent value="candy">
                     <GameLeaderboard groupId={groupId!} gameType="candy_crush" />
                   </TabsContent>
+                  <TabsContent value="pool">
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground mb-4">
+                        Chơi trực tiếp để ghi điểm!
+                      </p>
+                      <Button onClick={() => navigate(`/games/8-ball-pool/${groupId}`)}>
+                        Chơi ngay 🎱
+                      </Button>
+                    </div>
+                  </TabsContent>
                 </Tabs>
               ) : (
                 <Tabs defaultValue="candy" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+                  <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
                     <TabsTrigger value="spin">Vòng Quay</TabsTrigger>
                     <TabsTrigger value="puzzle">Ghép Chữ</TabsTrigger>
                     <TabsTrigger value="memory">Ghép Hình</TabsTrigger>
                     <TabsTrigger value="candy">💖 Candy Crush</TabsTrigger>
+                    <TabsTrigger value="pool">🎱 8 Ball</TabsTrigger>
                   </TabsList>
                   <TabsContent value="spin">
                     <SpinWheel groupId={groupId!} />
@@ -554,6 +566,17 @@ const GroupDetail = () => {
                   </TabsContent>
                   <TabsContent value="candy">
                     <CandyCrushGame />
+                  </TabsContent>
+                  <TabsContent value="pool">
+                    <Card className="p-8 text-center">
+                      <h3 className="text-2xl font-bold mb-4">🎱 8 Ball Pool</h3>
+                      <p className="text-muted-foreground mb-6">
+                        Chơi bi-a với bạn bè trong group! Tìm đối thủ và thách đấu real-time.
+                      </p>
+                      <Button onClick={() => navigate(`/games/8-ball-pool/${groupId}`)} size="lg">
+                        Bắt đầu chơi
+                      </Button>
+                    </Card>
                   </TabsContent>
                 </Tabs>
               )}

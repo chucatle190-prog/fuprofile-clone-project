@@ -18,6 +18,7 @@ import Marketplace from "./pages/Marketplace";
 import MarketplaceItemDetail from "./pages/MarketplaceItemDetail";
 import TransactionHistory from "./pages/TransactionHistory";
 import NotFound from "./pages/NotFound";
+import EightBallPool from "./components/games/EightBallPool";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/friends" element={<Friends />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/groups/:groupId" element={<GroupDetail />} />
+          <Route path="/games/8-ball-pool/:groupId" element={<EightBallPool />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/marketplace/:id" element={<MarketplaceItemDetail />} />
           <Route path="/transactions" element={<TransactionHistory />} />
