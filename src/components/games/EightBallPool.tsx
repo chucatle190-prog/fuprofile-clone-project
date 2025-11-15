@@ -53,6 +53,9 @@ const EightBallPool = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [cuePosition, setCuePosition] = useState({ x: 0, y: 0 });
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [spinX, setSpinX] = useState(0);
+  const [spinY, setSpinY] = useState(0);
+  const [turnTimer, setTurnTimer] = useState(30);
 
   // Get current user and initialize/join game
   useEffect(() => {
@@ -167,6 +170,37 @@ const EightBallPool = () => {
       }
     };
   }, [poolGame, gameState.shooting]);
+
+  // Turn timer
+  useEffect(() => {
+    const checkMyTurn = () => {
+      if (!poolGame) return false;
+      const isPlayer1 = currentUserId === poolGame.player1_id;
+      const isPlayer2 = currentUserId === poolGame.player2_id;
+      
+      if (poolGame.current_player === 0 && isPlayer1) return true;
+      if (poolGame.current_player === 1 && isPlayer2) return true;
+      
+      return false;
+    };
+
+    if (!poolGame || poolGame.status !== 'active' || gameState.shooting || !checkMyTurn()) {
+      setTurnTimer(30);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTurnTimer((prev) => {
+        if (prev <= 1) {
+          handleTurnEnd();
+          return 30;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [poolGame, gameState.shooting, currentUserId]);
 
   // Setup realtime channel
   useEffect(() => {
@@ -326,12 +360,51 @@ const EightBallPool = () => {
     return false;
   };
 
+  // Calculate trajectory prediction
+  const calculateTrajectory = (cueBall: Ball, angle: number): { x: number; y: number }[] => {
+    const points: { x: number; y: number }[] = [];
+    let x = cueBall.x;
+    let y = cueBall.y;
+    const speed = 5;
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+    
+    for (let i = 0; i < 100; i++) {
+      x += vx;
+      y += vy;
+      points.push({ x, y });
+      
+      // Check canvas boundaries
+      if (x < 20 || x > (canvasRef.current?.width || 800) - 20) break;
+      if (y < 20 || y > (canvasRef.current?.height || 400) - 20) break;
+      
+      // Check collision with other balls
+      const collision = physicsRef.current?.balls.find(ball => {
+        if (ball.pocketed || ball.number === 0) return false;
+        const dx = ball.x - x;
+        const dy = ball.y - y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        return distance < ball.radius * 2;
+      });
+      
+      if (collision) {
+        points.push({ x: collision.x, y: collision.y });
+        break;
+      }
+    }
+    
+    return points;
+  };
+
   const drawGame = (canvas: HTMLCanvasElement, physics: PoolPhysics) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear canvas
-    ctx.fillStyle = '#0D5E2E';
+    // Clear canvas with gradient
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, '#0A4D26');
+    gradient.addColorStop(1, '#0D5E2E');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw table border
@@ -383,35 +456,68 @@ const EightBallPool = () => {
     if (isAiming && !gameState.shooting && isMyTurn()) {
       const cueBall = physics.getCueBall();
       if (cueBall) {
-        // Draw aiming guideline (dotted line)
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.lineWidth = 3;
-        ctx.setLineDash([10, 5]);
-        ctx.beginPath();
-        ctx.moveTo(cueBall.x, cueBall.y);
-        const guideLength = 300;
-        ctx.lineTo(
-          cueBall.x + Math.cos(aimAngle) * guideLength,
-          cueBall.y + Math.sin(aimAngle) * guideLength
-        );
-        ctx.stroke();
-        ctx.setLineDash([]);
+        // Draw extended trajectory guideline
+        const trajectory = calculateTrajectory(cueBall, aimAngle);
+        
+        if (trajectory.length > 1) {
+          // Draw trajectory line with gradient
+          const trajectoryGradient = ctx.createLinearGradient(
+            cueBall.x, cueBall.y,
+            trajectory[trajectory.length - 1].x,
+            trajectory[trajectory.length - 1].y
+          );
+          trajectoryGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+          trajectoryGradient.addColorStop(1, 'rgba(255, 255, 255, 0.2)');
+          
+          ctx.strokeStyle = trajectoryGradient;
+          ctx.lineWidth = 4;
+          ctx.setLineDash([15, 10]);
+          ctx.beginPath();
+          ctx.moveTo(cueBall.x, cueBall.y);
+          
+          trajectory.forEach(point => {
+            ctx.lineTo(point.x, point.y);
+          });
+          ctx.stroke();
+          ctx.setLineDash([]);
+          
+          // Draw dots along the trajectory
+          trajectory.forEach((point, i) => {
+            if (i % 5 === 0) {
+              ctx.fillStyle = `rgba(255, 255, 255, ${1 - i / trajectory.length})`;
+              ctx.beginPath();
+              ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          });
+        }
 
-        // Draw cue stick
-        const cueLength = 150 + power * 3;
-        const cueStartX = cueBall.x - Math.cos(aimAngle) * (50 + power * 2);
-        const cueStartY = cueBall.y - Math.sin(aimAngle) * (50 + power * 2);
+        // Draw cue stick with animation
+        const cueLength = 200 + power * 2;
+        const pullBack = 30 + power * 3;
+        const cueStartX = cueBall.x - Math.cos(aimAngle) * pullBack;
+        const cueStartY = cueBall.y - Math.sin(aimAngle) * pullBack;
         const cueEndX = cueBall.x - Math.cos(aimAngle) * cueLength;
         const cueEndY = cueBall.y - Math.sin(aimAngle) * cueLength;
 
-        // Cue stick gradient
-        const gradient = ctx.createLinearGradient(cueStartX, cueStartY, cueEndX, cueEndY);
-        gradient.addColorStop(0, '#D2691E');
-        gradient.addColorStop(0.7, '#8B4513');
-        gradient.addColorStop(1, '#654321');
+        // Cue stick shadow
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(cueStartX + 2, cueStartY + 2);
+        ctx.lineTo(cueEndX + 2, cueEndY + 2);
+        ctx.stroke();
 
-        ctx.strokeStyle = gradient;
-        ctx.lineWidth = 8;
+        // Cue stick gradient
+        const cueGradient = ctx.createLinearGradient(cueStartX, cueStartY, cueEndX, cueEndY);
+        cueGradient.addColorStop(0, '#FFD700');
+        cueGradient.addColorStop(0.1, '#D2691E');
+        cueGradient.addColorStop(0.8, '#8B4513');
+        cueGradient.addColorStop(1, '#4A2511');
+
+        ctx.strokeStyle = cueGradient;
+        ctx.lineWidth = 9;
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(cueStartX, cueStartY);
@@ -419,26 +525,74 @@ const EightBallPool = () => {
         ctx.stroke();
 
         // Cue tip
-        ctx.fillStyle = '#4169E1';
+        ctx.fillStyle = '#1E90FF';
         ctx.beginPath();
-        ctx.arc(cueStartX, cueStartY, 5, 0, Math.PI * 2);
+        ctx.arc(cueStartX, cueStartY, 6, 0, Math.PI * 2);
         ctx.fill();
+        
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Draw spin control circle
+        const spinRadius = 50;
+        const spinCenterX = canvas.width - 80;
+        const spinCenterY = canvas.height - 80;
+        
+        // Spin circle background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.beginPath();
+        ctx.arc(spinCenterX, spinCenterY, spinRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Spin circle border
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Draw cue ball representation
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(spinCenterX, spinCenterY, 30, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw spin point
+        ctx.fillStyle = '#FF0000';
+        ctx.beginPath();
+        ctx.arc(
+          spinCenterX + spinX * 20,
+          spinCenterY + spinY * 20,
+          5,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+        
+        // Label
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Spin', spinCenterX, spinCenterY - 60);
 
         // Draw power bar at bottom
-        const barWidth = 250;
-        const barHeight = 30;
+        const barWidth = 300;
+        const barHeight = 35;
         const barX = (canvas.width - barWidth) / 2;
-        const barY = canvas.height - 50;
+        const barY = canvas.height - 60;
 
-        // Power bar background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        // Power bar background with shadow
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillRect(barX - 5, barY - 5, barWidth + 10, barHeight + 10);
+        ctx.shadowBlur = 0;
 
         // Power bar fill
         const powerPercent = Math.min(power / 25, 1);
-        const powerGradient = ctx.createLinearGradient(barX, 0, barX + barWidth * powerPercent, 0);
+        const powerGradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
         powerGradient.addColorStop(0, '#00FF00');
-        powerGradient.addColorStop(0.5, '#FFFF00');
+        powerGradient.addColorStop(0.4, '#FFFF00');
+        powerGradient.addColorStop(0.7, '#FFA500');
         powerGradient.addColorStop(1, '#FF0000');
         
         ctx.fillStyle = powerGradient;
@@ -446,16 +600,65 @@ const EightBallPool = () => {
 
         // Power bar border
         ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+        // Power segments
+        for (let i = 1; i < 5; i++) {
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(barX + (barWidth / 5) * i, barY);
+          ctx.lineTo(barX + (barWidth / 5) * i, barY + barHeight);
+          ctx.stroke();
+        }
 
         // Power text
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 14px Arial';
+        ctx.font = 'bold 16px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(`Lực: ${Math.round(power)}`, canvas.width / 2, barY - 10);
-        ctx.fillText('Kéo cần gạt để điều chỉnh lực', canvas.width / 2, barY + barHeight + 20);
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
+        ctx.strokeText(`LỰC: ${Math.round(power * 4)}%`, canvas.width / 2, barY - 12);
+        ctx.fillText(`LỰC: ${Math.round(power * 4)}%`, canvas.width / 2, barY - 12);
       }
+    }
+    
+    // Draw timer if it's player's turn
+    if (isMyTurn() && !gameState.shooting && poolGame?.status === 'active') {
+      const timerX = canvas.width / 2;
+      const timerY = 30;
+      const timerRadius = 25;
+      
+      // Timer circle background
+      ctx.fillStyle = turnTimer <= 10 ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.5)';
+      ctx.beginPath();
+      ctx.arc(timerX, timerY, timerRadius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Timer progress arc
+      const progress = turnTimer / 30;
+      ctx.strokeStyle = turnTimer <= 10 ? '#FF0000' : '#00FF00';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(
+        timerX,
+        timerY,
+        timerRadius - 3,
+        -Math.PI / 2,
+        -Math.PI / 2 + (Math.PI * 2 * progress)
+      );
+      ctx.stroke();
+      
+      // Timer text
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 18px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3;
+      ctx.strokeText(turnTimer.toString(), timerX, timerY);
+      ctx.fillText(turnTimer.toString(), timerX, timerY);
     }
   };
 
@@ -544,8 +747,35 @@ const EightBallPool = () => {
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerLeave={handlePointerUp}
-              className="w-full border-4 border-primary/20 rounded-lg cursor-crosshair touch-none"
+              className="w-full border-4 border-primary/20 rounded-lg cursor-crosshair touch-none shadow-2xl"
               style={{ maxWidth: '100%', height: 'auto' }}
+              onClick={(e) => {
+                // Handle spin control clicks
+                if (!isAiming) return;
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const spinCenterX = canvas.width - 80;
+                const spinCenterY = canvas.height - 80;
+                const spinRadius = 50;
+                
+                const dx = x - spinCenterX;
+                const dy = y - spinCenterY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < spinRadius) {
+                  setSpinX(Math.max(-1, Math.min(1, dx / 20)));
+                  setSpinY(Math.max(-1, Math.min(1, dy / 20)));
+                  toast({
+                    title: 'Đã điều chỉnh spin! 🎯',
+                    description: `Spin: ${spinX > 0 ? 'Phải' : spinX < 0 ? 'Trái' : 'Giữa'}`,
+                  });
+                }
+              }}
             />
 
             <div className="mt-4 flex justify-between items-center">
@@ -562,8 +792,18 @@ const EightBallPool = () => {
                   </span>
                 )}
               </div>
-              <div className="text-sm text-muted-foreground">
-                {isMyTurn() ? 'Nhấn gần bi trắng và kéo để nhắm - Kéo xa = lực mạnh' : 'Chờ đối thủ đánh'}
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">
+                  {isMyTurn() ? 'Nhấn gần bi trắng và kéo để nhắm - Kéo xa = lực mạnh' : 'Chờ đối thủ đánh'}
+                </div>
+                {isMyTurn() && !gameState.shooting && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className={`font-semibold ${turnTimer <= 10 ? 'text-red-500 animate-pulse' : 'text-primary'}`}>
+                      ⏱️ {turnTimer}s
+                    </span>
+                    {turnTimer <= 10 && <span className="text-red-500 text-xs">Nhanh lên!</span>}
+                  </div>
+                )}
               </div>
             </div>
           </Card>
@@ -600,9 +840,11 @@ const EightBallPool = () => {
               <h3 className="font-semibold mb-2">Hướng dẫn</h3>
               <ul className="text-sm space-y-2 text-muted-foreground">
                 <li>• Nhấn gần bi trắng và kéo cần gạt</li>
-                <li>• Kéo xa = lực mạnh hơn (tối đa 25)</li>
-                <li>• Thanh lực hiển thị độ mạnh</li>
-                <li>• Đưa bi của bạn vào lỗ</li>
+                <li>• Đường chấm trắng chỉ hướng bi sẽ đi</li>
+                <li>• Kéo xa = lực mạnh hơn (100%)</li>
+                <li>• Nhấn vào vòng tròn Spin để xoáy bi</li>
+                <li>• Hoàn thành trong 30 giây</li>
+                <li>• Đưa bi của bạn vào lỗ trước</li>
                 <li>• Cuối cùng đưa bi số 8 vào để thắng</li>
               </ul>
             </Card>
