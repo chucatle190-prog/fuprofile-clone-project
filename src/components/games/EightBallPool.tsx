@@ -290,8 +290,8 @@ const EightBallPool = () => {
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     setAimAngle(angle);
-    // Power based on how far you drag (max 25)
-    setPower(Math.min(distance / 4, 25));
+    // Power based on how far you drag - easier to get more power
+    setPower(Math.min(distance / 2.5, 30));
     setMousePos({ x, y });
   };
 
@@ -302,7 +302,7 @@ const EightBallPool = () => {
     setIsAiming(false);
     setIsDragging(false);
 
-    if (power > 2) {
+    if (power > 1) {
       physicsRef.current.shootCueBall(power, aimAngle);
       setGameState((prev) => ({ ...prev, shooting: true }));
 
@@ -588,7 +588,7 @@ const EightBallPool = () => {
         ctx.shadowBlur = 0;
 
         // Power bar fill
-        const powerPercent = Math.min(power / 25, 1);
+        const powerPercent = Math.min(power / 30, 1);
         const powerGradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
         powerGradient.addColorStop(0, '#00FF00');
         powerGradient.addColorStop(0.4, '#FFFF00');
