@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useMetaMask } from "@/hooks/useMetaMask";
 import { FU_TOKEN_CONFIG } from "@/config/gameConfig";
+import TokenAnimation from "@/components/TokenAnimation";
 
 interface GroupRewardsProps {
   userId: string;
@@ -28,6 +29,9 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [showTokenAnimation, setShowTokenAnimation] = useState(false);
+  const [tokenAnimAmount, setTokenAnimAmount] = useState(0);
+  const [tokenAnimType, setTokenAnimType] = useState<'receive' | 'send'>('receive');
   const { toast } = useToast();
   const { account, connectWallet, isConnecting } = useMetaMask();
 
@@ -177,6 +181,11 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
           description: `Bạn đã nhận ${totalPoints} F.U Token`,
         });
         
+        // Show animation
+        setTokenAnimAmount(totalPoints);
+        setTokenAnimType('receive');
+        setShowTokenAnimation(true);
+        
         // Refresh data
         await fetchScores();
       } else {
@@ -279,6 +288,11 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
           title: "Rút F.U Token thành công! 🎉",
           description: data.message,
         });
+        
+        // Show animation
+        setTokenAnimAmount(amount);
+        setTokenAnimType('send');
+        setShowTokenAnimation(true);
         setWithdrawAmount("");
         await fetchScores();
       } else {
@@ -328,7 +342,14 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
   const unclaimedPoints = totalPoints;
 
   return (
-    <Card>
+    <>
+      <TokenAnimation 
+        show={showTokenAnimation}
+        amount={tokenAnimAmount}
+        type={tokenAnimType}
+        onComplete={() => setShowTokenAnimation(false)}
+      />
+      <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Gift className="h-5 w-5 text-primary" />
@@ -455,6 +476,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
         </div>
       </CardContent>
     </Card>
+    </>
   );
 };
 
