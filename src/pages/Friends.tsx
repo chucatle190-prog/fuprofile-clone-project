@@ -11,8 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { UserPlus, UserCheck, X, Users, Search, MessageCircle, UserMinus } from "lucide-react";
+import { UserPlus, UserCheck, X, Users, Search, MessageCircle, UserMinus, Coins } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import TransferTokenDialog from "@/components/TransferTokenDialog";
+import TokenAnimation from "@/components/TokenAnimation";
 
 interface Profile {
   id: string;
@@ -36,6 +38,11 @@ const Friends = () => {
   const [friends, setFriends] = useState<Friendship[]>([]);
   const [suggestions, setSuggestions] = useState<Profile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [selectedFriend, setSelectedFriend] = useState<Profile | null>(null);
+  const [currentBalance, setCurrentBalance] = useState(0);
+  const [showTokenAnimation, setShowTokenAnimation] = useState(false);
+  const [tokenAnimAmount, setTokenAnimAmount] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -46,6 +53,7 @@ const Friends = () => {
       } else {
         setUser(session.user);
         fetchFriendships(session.user.id);
+        fetchCurrentBalance(session.user.id);
       }
     });
 
@@ -55,6 +63,7 @@ const Friends = () => {
       } else {
         setUser(session.user);
         fetchFriendships(session.user.id);
+        fetchCurrentBalance(session.user.id);
       }
     });
 
@@ -154,6 +163,36 @@ const Friends = () => {
     }
   };
 
+  const fetchCurrentBalance = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("user_wallets")
+        .select("camly_balance")
+        .eq("user_id", userId)
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setCurrentBalance(Number(data.camly_balance));
+      }
+    } catch (error: any) {
+      console.error("Error fetching balance:", error);
+    }
+  };
+
+  const handleOpenTransfer = (friendProfile: Profile) => {
+    setSelectedFriend(friendProfile);
+    setShowTransferDialog(true);
+  };
+
+  const handleTransferSuccess = (amount: number) => {
+    if (user) {
+      fetchCurrentBalance(user.id);
+    }
+    setTokenAnimAmount(amount);
+    setShowTokenAnimation(true);
+  };
+
   const acceptFriendRequest = async (friendshipId: string) => {
     await supabase
       .from("friendships")
@@ -241,6 +280,23 @@ const Friends = () => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
+      <TokenAnimation 
+        show={showTokenAnimation}
+        amount={tokenAnimAmount}
+        type="send"
+        onComplete={() => setShowTokenAnimation(false)}
+      />
+      {selectedFriend && (
+        <TransferTokenDialog
+          open={showTransferDialog}
+          onClose={() => setShowTransferDialog(false)}
+          receiverId={selectedFriend.id}
+          receiverName={selectedFriend.full_name || selectedFriend.username}
+          receiverAvatar={selectedFriend.avatar_url}
+          currentBalance={currentBalance}
+          onTransferSuccess={handleTransferSuccess}
+        />
+      )}
       <Navbar user={user} />
       <div className="flex">
         <LeftSidebar />
@@ -313,7 +369,7 @@ const Friends = () => {
                                     {profile.bio}
                                   </p>
                                 )}
-                                <div className="flex gap-2 mt-2">
+                                 <div className="flex gap-2 mt-2">
                                   <Button
                                     size="sm"
                                     className="flex-1"
@@ -321,6 +377,14 @@ const Friends = () => {
                                   >
                                     <MessageCircle className="h-4 w-4 mr-1" />
                                     Nhắn tin
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="bg-accent/10 hover:bg-accent/20 border-accent/30"
+                                    onClick={() => handleOpenTransfer(profile)}
+                                  >
+                                    <Coins className="h-4 w-4" />
                                   </Button>
                                   <Button
                                     size="sm"

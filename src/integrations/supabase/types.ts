@@ -1228,6 +1228,10 @@ export type Database = {
         Args: { _group_id: string; _role: string; _user_id: string }
         Returns: boolean
       }
+      increment_wallet_balance: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: undefined
+      }
       is_conversation_member: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
