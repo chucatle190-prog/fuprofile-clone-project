@@ -226,7 +226,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
     } catch (error: any) {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể thêm token",
+        description: error.message || "Không thể thêm F.U Token",
         variant: "destructive",
       });
     }
@@ -276,7 +276,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
 
       if (data.success) {
         toast({
-          title: "Rút token thành công! 🎉",
+          title: "Rút F.U Token thành công! 🎉",
           description: data.message,
         });
         setWithdrawAmount("");

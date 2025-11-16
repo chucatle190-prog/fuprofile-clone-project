@@ -287,7 +287,7 @@ const Wallet = () => {
 
       if (data.success) {
         toast({
-          title: "Rút token thành công!",
+          title: "Rút F.U Token thành công!",
           description: (
             <div className="space-y-1">
               <p>Đã rút {data.amount} F.U Token</p>
@@ -310,8 +310,8 @@ const Wallet = () => {
       }
     } catch (error: any) {
       toast({
-        title: "Lỗi rút token",
-        description: error.message || "Không thể rút token. Vui lòng thử lại.",
+        title: "Lỗi rút F.U Token",
+        description: error.message || "Không thể rút F.U Token. Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
