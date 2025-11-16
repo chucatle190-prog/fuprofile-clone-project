@@ -172,10 +172,7 @@ const MarketplaceItemDetail = () => {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(price);
+    return `${price.toLocaleString()} F.U Token`;
   };
 
   if (loading) {
@@ -282,7 +279,7 @@ const MarketplaceItemDetail = () => {
                         </TabsTrigger>
                         <TabsTrigger value="crypto">
                           <Wallet className="h-4 w-4 mr-2" />
-                          Thanh toán Crypto
+                          Thanh toán
                         </TabsTrigger>
                       </TabsList>
 

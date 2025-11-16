@@ -70,10 +70,7 @@ const MarketplaceItemCard = ({ item, currentUserId, onUpdate }: MarketplaceItemC
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(price);
+    return `${price.toLocaleString()} F.U Token`;
   };
 
   return (
