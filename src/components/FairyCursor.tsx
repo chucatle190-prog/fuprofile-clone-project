@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import fairy1 from '@/assets/game/fairy1.jpg';
+import fairyCursor from '@/assets/fairy-cursor.png';
 
 interface Sparkle {
   id: number;
@@ -70,11 +70,12 @@ export default function FairyCursor() {
           
           {/* Fairy image */}
           <img
-            src={fairy1}
+            src={fairyCursor}
             alt="fairy"
-            className="relative w-16 h-16 rounded-full object-cover animate-pulse shadow-lg shadow-pink-500/50"
+            className="relative w-20 h-20 object-contain animate-pulse drop-shadow-2xl"
             style={{
               animation: 'bounce 0.6s ease-in-out infinite, pulse 1.5s ease-in-out infinite',
+              filter: 'drop-shadow(0 0 20px rgba(255, 192, 203, 0.8))',
             }}
           />
           
