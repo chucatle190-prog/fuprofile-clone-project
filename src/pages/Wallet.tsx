@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Wallet as WalletIcon, Send, Download, Gift, Copy, QrCode } from "lucide-react";
+import TokenAnimation from "@/components/TokenAnimation";
 
 declare global {
   interface Window {
@@ -48,6 +49,9 @@ const Wallet = () => {
   const [user, setUser] = useState<User | null>(null);
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showTokenAnimation, setShowTokenAnimation] = useState(false);
+  const [tokenAnimAmount, setTokenAnimAmount] = useState(0);
+  const [tokenAnimType, setTokenAnimType] = useState<'receive' | 'send'>('receive');
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -229,6 +233,11 @@ const Wallet = () => {
           description: data.message,
         });
         
+        // Show animation
+        setTokenAnimAmount(10);
+        setTokenAnimType('receive');
+        setShowTokenAnimation(true);
+        
         // Refresh wallet data
         await fetchWallet(user.id);
       } else {
@@ -303,6 +312,11 @@ const Wallet = () => {
           ),
         });
         
+        // Show animation
+        setTokenAnimAmount(data.amount);
+        setTokenAnimType('send');
+        setShowTokenAnimation(true);
+        
         // Refresh wallet data
         await fetchWallet(user.id);
       } else {
@@ -321,6 +335,12 @@ const Wallet = () => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
+      <TokenAnimation 
+        show={showTokenAnimation}
+        amount={tokenAnimAmount}
+        type={tokenAnimType}
+        onComplete={() => setShowTokenAnimation(false)}
+      />
       <Navbar user={user} />
       <div className="flex">
         <LeftSidebar />

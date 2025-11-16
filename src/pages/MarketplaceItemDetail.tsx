@@ -16,6 +16,7 @@ import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import MetaMaskConnect from "@/components/crypto/MetaMaskConnect";
 import CryptoPayment from "@/components/crypto/CryptoPayment";
+import TokenAnimation from "@/components/TokenAnimation";
 
 interface Profile {
   id: string;
@@ -44,6 +45,9 @@ const MarketplaceItemDetail = () => {
   const [user, setUser] = useState<User | null>(null);
   const [item, setItem] = useState<MarketplaceItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showTokenAnimation, setShowTokenAnimation] = useState(false);
+  const [tokenAnimAmount, setTokenAnimAmount] = useState(0);
+  const [tokenAnimType, setTokenAnimType] = useState<'receive' | 'send'>('send');
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -200,6 +204,12 @@ const MarketplaceItemDetail = () => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
+      <TokenAnimation 
+        show={showTokenAnimation}
+        amount={tokenAnimAmount}
+        type={tokenAnimType}
+        onComplete={() => setShowTokenAnimation(false)}
+      />
       <Navbar user={user} />
       <div className="flex">
         <LeftSidebar />
