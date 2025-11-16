@@ -10,7 +10,6 @@ import CreatePost from "@/components/CreatePost";
 import PostCard from "@/components/PostCard";
 import SharedPostCard from "@/components/SharedPostCard";
 import StoryCarousel from "@/components/StoryCarousel";
-import FairyCursor from "@/components/FairyCursor";
 import { useToast } from "@/hooks/use-toast";
 
 interface Profile {
@@ -197,7 +196,6 @@ const Feed = () => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      <FairyCursor />
       <Navbar user={user} />
       <div className="flex">
         <LeftSidebar />
