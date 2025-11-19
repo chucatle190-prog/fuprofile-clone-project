@@ -35,7 +35,7 @@ export const GAME_CONFIG = {
 export const FU_TOKEN_CONFIG = {
   CONTRACT_ADDRESS: '0x0910320181889feFDE0BB1Ca63962b0A8882e413',
   DECIMALS: 18,
-  SYMBOL: 'Happy Camly',
+  SYMBOL: 'CAMLY',
   NAME: 'Happy Camly Coin',
 };
 
