@@ -380,6 +380,16 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
                 <Download className="mr-2 h-4 w-4" />
                 Import Happy Camly vào MetaMask
               </Button>
+              
+              <div className="text-xs text-muted-foreground bg-blue-500/10 border border-blue-500/20 rounded-lg p-2">
+                <p className="font-semibold text-blue-600 dark:text-blue-400 mb-1">
+                  📝 Thông tin token CAMLY
+                </p>
+                <p>• Mạng: BNB Chain (Mainnet)</p>
+                <p>• Symbol: CAMLY</p>
+                <p className="break-all">• Contract: 0x0910320181889feFDE0BB1Ca63962b0A8882e413</p>
+                <p>• Decimals: 3</p>
+              </div>
 
               <div className="flex gap-2">
                 <Input
