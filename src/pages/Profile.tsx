@@ -16,6 +16,7 @@ import PostCard from "@/components/PostCard";
 import PhotosGrid from "@/components/profile/PhotosGrid";
 import FriendsList from "@/components/profile/FriendsList";
 import AboutSection from "@/components/profile/AboutSection";
+import WalletAddressSection from "@/components/profile/WalletAddressSection";
 import AvatarViewer from "@/components/AvatarViewer";
 
 interface Profile {
@@ -502,13 +503,23 @@ const Profile = () => {
                 )}
               </TabsContent>
               
-              <TabsContent value="about" className="mt-4">
+              <TabsContent value="about" className="mt-4 space-y-4">
                 {profile && (
-                  <AboutSection 
-                    profile={profile} 
-                    isOwnProfile={isOwnProfile}
-                    onUpdate={() => profile && fetchProfile(profile.id)}
-                  />
+                  <>
+                    <WalletAddressSection
+                      userId={profile.id}
+                      walletAddress={profile.wallet_address}
+                      isOwnProfile={isOwnProfile}
+                      onWalletUpdate={(address) => {
+                        setProfile({ ...profile, wallet_address: address });
+                      }}
+                    />
+                    <AboutSection 
+                      profile={profile} 
+                      isOwnProfile={isOwnProfile}
+                      onUpdate={() => profile && fetchProfile(profile.id)}
+                    />
+                  </>
                 )}
               </TabsContent>
               

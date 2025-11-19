@@ -2,17 +2,17 @@ import { useState, useEffect } from "react";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import { useToast } from "@/hooks/use-toast";
 
-// BSC Testnet configuration
-const BSC_TESTNET_PARAMS = {
-  chainId: "0x61", // 97 in hex
-  chainName: "BSC Testnet",
+// BNB Chain Mainnet configuration
+const BNB_CHAIN_PARAMS = {
+  chainId: "0x38", // 56 in hex
+  chainName: "BNB Smart Chain",
   nativeCurrency: {
     name: "BNB",
-    symbol: "tBNB",
+    symbol: "BNB",
     decimals: 18,
   },
-  rpcUrls: ["https://data-seed-prebsc-1-s1.binance.org:8545/"],
-  blockExplorerUrls: ["https://testnet.bscscan.com/"],
+  rpcUrls: ["https://bsc-dataseed.binance.org/"],
+  blockExplorerUrls: ["https://bscscan.com/"],
 };
 
 // USDT contract on BSC Testnet
@@ -119,13 +119,13 @@ export const useMetaMask = () => {
         setAccount(accounts[0]);
         await updateBalances(accounts[0]);
         
-        // Check if on BSC Testnet
+        // Check if on BNB Chain
         const network = await provider.getNetwork();
         const currentChainId = `0x${network.chainId.toString(16)}`;
         setChainId(currentChainId);
 
-        if (currentChainId !== BSC_TESTNET_PARAMS.chainId) {
-          await switchToBSCTestnet();
+        if (currentChainId !== BNB_CHAIN_PARAMS.chainId) {
+          await switchToBNBChain();
         } else {
           toast({
             title: "Kết nối thành công",
@@ -145,15 +145,15 @@ export const useMetaMask = () => {
     }
   };
 
-  const switchToBSCTestnet = async () => {
+  const switchToBNBChain = async () => {
     try {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: BSC_TESTNET_PARAMS.chainId }],
+        params: [{ chainId: BNB_CHAIN_PARAMS.chainId }],
       });
       
       toast({
-        title: "Đã chuyển sang BSC Testnet",
+        title: "Đã chuyển sang BNB Chain",
         description: "Kết nối thành công",
       });
     } catch (error: any) {
@@ -162,7 +162,7 @@ export const useMetaMask = () => {
         try {
           await window.ethereum.request({
             method: "wallet_addEthereumChain",
-            params: [BSC_TESTNET_PARAMS],
+            params: [BNB_CHAIN_PARAMS],
           });
         } catch (addError: any) {
           toast({
@@ -226,10 +226,10 @@ export const useMetaMask = () => {
     usdtBalance,
     isConnecting,
     chainId,
-    isCorrectNetwork: chainId === BSC_TESTNET_PARAMS.chainId,
+    isCorrectNetwork: chainId === BNB_CHAIN_PARAMS.chainId,
     connectWallet,
     disconnectWallet,
-    switchToBSCTestnet,
+    switchToBNBChain,
     sendUSDT,
   };
 };
