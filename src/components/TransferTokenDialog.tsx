@@ -48,7 +48,7 @@ export default function TransferTokenDialog({
     if (transferAmount > currentBalance) {
       toast({
         title: "Số dư không đủ",
-        description: `Bạn chỉ có ${currentBalance} F.U Token`,
+        description: `Bạn chỉ có ${currentBalance} Happy Camly`,
         variant: "destructive",
       });
       return;
@@ -96,7 +96,7 @@ export default function TransferTokenDialog({
     } catch (error: any) {
       toast({
         title: "Lỗi chuyển token",
-        description: error.message || "Không thể chuyển F.U Token",
+        description: error.message || "Không thể chuyển Happy Camly",
         variant: "destructive",
       });
     } finally {
@@ -110,10 +110,10 @@ export default function TransferTokenDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Coins className="h-5 w-5 text-accent" />
-            Chuyển F.U Token
+            Chuyển Happy Camly
           </DialogTitle>
           <DialogDescription>
-            Gửi F.U Token cho bạn bè của bạn
+            Gửi Happy Camly cho bạn bè của bạn
           </DialogDescription>
         </DialogHeader>
 
@@ -138,13 +138,13 @@ export default function TransferTokenDialog({
               <span className="text-2xl font-bold text-accent">
                 {currentBalance.toLocaleString()}
               </span>
-              <span className="text-sm text-muted-foreground">F.U Token</span>
+              <span className="text-sm text-muted-foreground">Happy Camly</span>
             </div>
           </div>
 
           {/* Amount Input */}
           <div className="space-y-2">
-            <Label htmlFor="amount">Số lượng F.U Token</Label>
+            <Label htmlFor="amount">Số lượng Happy Camly</Label>
             <Input
               id="amount"
               type="number"

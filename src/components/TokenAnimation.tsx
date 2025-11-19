@@ -60,7 +60,7 @@ export default function TokenAnimation({ show, amount, type, onComplete }: Token
                 {type === 'receive' ? '+' : '-'}{amount}
               </div>
               <div className="text-xl font-semibold text-white/90 drop-shadow">
-                F.U Token
+                Happy Camly
               </div>
               <div className="text-sm text-white/80 drop-shadow">
                 {type === 'receive' ? '🎉 Nhận thành công!' : '✅ Gửi thành công!'}

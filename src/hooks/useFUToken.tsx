@@ -177,8 +177,8 @@ export const useFUToken = () => {
       });
       
       toast({
-        title: "Đã thêm F.U Token",
-        description: "F.U Token đã được thêm vào MetaMask",
+        title: "Đã thêm Happy Camly",
+        description: "Happy Camly đã được thêm vào MetaMask",
       });
     } catch (error: any) {
       toast({

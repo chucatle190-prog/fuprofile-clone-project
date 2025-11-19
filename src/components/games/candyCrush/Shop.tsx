@@ -30,7 +30,7 @@ export default function Shop({ isOpen, onClose, onPurchase }: ShopProps) {
     if (balance < price) {
       toast({
         title: "Insufficient Balance",
-        description: `You need ${price} F.U but have ${balance.toFixed(2)} F.U`,
+        description: `You need ${price} Camly but have ${balance.toFixed(2)} Camly`,
         variant: "destructive",
       });
       return;
@@ -82,11 +82,11 @@ export default function Shop({ isOpen, onClose, onPurchase }: ShopProps) {
                   <span className="font-mono text-sm">{account.slice(0, 6)}...{account.slice(-4)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">F.U Balance:</span>
-                  <span className="font-bold text-lg">{parseFloat(fuBalance).toFixed(2)} F.U</span>
+                  <span className="text-sm text-muted-foreground">Camly Balance:</span>
+                  <span className="font-bold text-lg">{parseFloat(fuBalance).toFixed(2)} Camly</span>
                 </div>
                 <Button onClick={addFUTokenToWallet} variant="outline" size="sm" className="w-full">
-                  Add F.U Token to MetaMask
+                  Add Happy Camly to MetaMask
                 </Button>
               </div>
             )}
@@ -103,7 +103,7 @@ export default function Shop({ isOpen, onClose, onPurchase }: ShopProps) {
                   </div>
                   <p className="text-sm text-muted-foreground">{item.description}</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold text-primary">{item.price} F.U</span>
+                    <span className="text-2xl font-bold text-primary">{item.price} Camly</span>
                     <Button 
                       onClick={() => handlePurchase(key, item.price)}
                       disabled={!account || parseFloat(fuBalance) < item.price}
