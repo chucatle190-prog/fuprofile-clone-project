@@ -23,6 +23,12 @@ serve(async (req) => {
       }
     );
 
+    // Service role client for admin operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
     // Get the authenticated user from the Authorization header
     const authHeader = req.headers.get('Authorization');
     const token = authHeader?.replace('Bearer ', '');
@@ -105,10 +111,10 @@ serve(async (req) => {
       );
     }
 
-    // If receiver doesn't have a wallet, create one
+    // If receiver doesn't have a wallet, create one using admin client
     if (!receiverWallet) {
       console.log('Creating wallet for receiver:', receiver_id);
-      const { error: createError } = await supabaseClient
+      const { error: createError } = await supabaseAdmin
         .from('user_wallets')
         .insert({ user_id: receiver_id });
 
