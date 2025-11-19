@@ -84,9 +84,30 @@ Deno.serve(async (req) => {
       throw new Error(`Số dư không đủ. Số dư hiện tại: ${currentBalance} Camly`);
     }
 
-    // Create a mock transaction hash for tracking
-    const mockTxHash = `0x${Date.now().toString(16)}${Math.random().toString(16).substring(2, 18)}`;
-    console.log(`Processing in-app withdrawal: ${withdrawAmount} Camly to ${wallet.wallet_address}`);
+    // Connect to BNB Chain and send on-chain transfer from treasury to user wallet
+    const provider = new ethers.JsonRpcProvider(BNB_CHAIN_RPC);
+    const treasuryWallet = new ethers.Wallet(treasuryPrivateKey, provider);
+    const camlyContract = new ethers.Contract(CAMLY_TOKEN_ADDRESS, ERC20_ABI, treasuryWallet);
+
+    // Ensure treasury has enough CAMLY
+    const decimals = await camlyContract.decimals();
+    const amountInUnits = ethers.parseUnits(withdrawAmount.toString(), decimals);
+    const treasuryBalanceRaw = await camlyContract.balanceOf(treasuryWallet.address);
+    const treasuryBalance = Number(ethers.formatUnits(treasuryBalanceRaw, decimals));
+
+    if (treasuryBalance < withdrawAmount) {
+      throw new Error(`Treasury không đủ CAMLY để rút. Số dư Treasury: ${treasuryBalance} CAMLY`);
+    }
+
+    console.log(`Sending on-chain withdrawal: ${withdrawAmount} CAMLY from ${treasuryWallet.address} to ${wallet.wallet_address}`);
+
+    const tx = await camlyContract.transfer(wallet.wallet_address, amountInUnits);
+    console.log('Withdrawal tx sent:', tx.hash);
+    const receipt = await tx.wait();
+
+    if (receipt.status !== 1) {
+      throw new Error('Giao dịch rút CAMLY trên blockchain thất bại');
+    }
 
     // Update database - subtract from balance
     const newBalance = currentBalance - withdrawAmount;
@@ -99,34 +120,30 @@ Deno.serve(async (req) => {
       .eq('user_id', user.id);
 
     if (updateError) {
-      console.error('Error updating balance:', updateError);
-      // Transaction already sent, so we log but don't fail
+      console.error('Error updating balance after withdraw:', updateError);
     }
 
-    // Create transaction record
-    const { error: txError } = await supabase
-      .from('crypto_transactions')
+    // Log to reward history for tracking
+    const { error: historyError } = await supabase
+      .from('reward_history')
       .insert({
-        buyer_id: user.id,
-        seller_id: user.id,
+        user_id: user.id,
         amount: withdrawAmount,
-        token_symbol: 'CAMLY',
-        transaction_hash: mockTxHash,
-        status: 'confirmed',
-        network: 'In-App',
+        reward_type: 'withdraw',
+        description: `Rút về ví ${wallet.wallet_address}`,
       });
 
-    if (txError) {
-      console.error('Error creating transaction record:', txError);
+    if (historyError) {
+      console.error('Error creating reward_history record for withdraw:', historyError);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
         amount: withdrawAmount,
-        newBalance: newBalance,
-        transactionHash: mockTxHash,
-        message: `Đã rút ${withdrawAmount} Happy Camly thành công! Token sẽ được chuyển đến ví của bạn.`,
+        newBalance,
+        transactionHash: tx.hash,
+        message: `Đã rút ${withdrawAmount} Happy Camly thành công! Token đã được chuyển on-chain về ví của bạn.`,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
