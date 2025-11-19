@@ -14,6 +14,7 @@ import { Trophy, Medal, Award, TrendingUp, TrendingDown, Wallet } from "lucide-r
 import { useToast } from "@/hooks/use-toast";
 import { useTopRankings } from "@/hooks/useTopRankings";
 import happyCamlyCoin from "@/assets/happy-camly-coin.jpg";
+import RankUpAnimation from "@/components/RankUpAnimation";
 
 interface LeaderboardEntry {
   user_id: string;
@@ -33,7 +34,7 @@ const Leaderboard = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { setTopHolders, setTopReceivers, setTopSenders } = useTopRankings();
+  const { setTopHolders, setTopReceivers, setTopSenders, latestRankChange, clearRankChange } = useTopRankings();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -145,7 +146,7 @@ const Leaderboard = () => {
         setHoldersLeaderboard(enrichedHolders);
         
         // Set top 10 holders
-        setTopHolders(enrichedHolders.map(h => h.user_id));
+        setTopHolders(enrichedHolders.map(h => h.user_id), user?.id);
       }
 
       // Process receivers
@@ -178,7 +179,7 @@ const Leaderboard = () => {
         setReceiversLeaderboard(enrichedReceivers);
         
         // Set top 10 receivers
-        setTopReceivers(enrichedReceivers.map(r => r.user_id));
+        setTopReceivers(enrichedReceivers.map(r => r.user_id), user?.id);
       }
 
       // Process senders
@@ -211,7 +212,7 @@ const Leaderboard = () => {
         setSendersLeaderboard(enrichedSenders);
         
         // Set top 10 senders
-        setTopSenders(enrichedSenders.map(s => s.user_id));
+        setTopSenders(enrichedSenders.map(s => s.user_id), user?.id);
       }
     } catch (error: any) {
       toast({
@@ -443,6 +444,14 @@ const Leaderboard = () => {
           </div>
         </div>
       </div>
+
+      <RankUpAnimation 
+        show={!!latestRankChange}
+        category={latestRankChange?.category || 'holder'}
+        rank={latestRankChange?.rank || 1}
+        previousRank={latestRankChange?.previousRank || null}
+        onComplete={clearRankChange}
+      />
 
       <MobileNav />
     </div>
