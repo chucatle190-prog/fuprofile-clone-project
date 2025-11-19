@@ -51,7 +51,15 @@ const FriendsList = ({ userId }: FriendsListProps) => {
     // Get friends where I'm user_id
     const { data: friends1 } = await supabase
       .from("friendships")
-      .select("profiles!friendships_friend_id_fkey(id, username, full_name, avatar_url, wallet_address)")
+      .select(`
+        profiles!friendships_friend_id_fkey(
+          id, 
+          username, 
+          full_name, 
+          avatar_url, 
+          wallet_address
+        )
+      `)
       .eq("user_id", userId)
       .eq("status", "accepted")
       .limit(9);
@@ -59,7 +67,15 @@ const FriendsList = ({ userId }: FriendsListProps) => {
     // Get friends where I'm friend_id
     const { data: friends2 } = await supabase
       .from("friendships")
-      .select("profiles!friendships_user_id_fkey(id, username, full_name, avatar_url, wallet_address)")
+      .select(`
+        profiles!friendships_user_id_fkey(
+          id, 
+          username, 
+          full_name, 
+          avatar_url, 
+          wallet_address
+        )
+      `)
       .eq("friend_id", userId)
       .eq("status", "accepted")
       .limit(9);
