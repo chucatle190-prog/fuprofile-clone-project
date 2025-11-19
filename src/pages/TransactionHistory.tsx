@@ -159,7 +159,7 @@ const TransactionHistory = () => {
                           </TableCell>
                           <TableCell>
                             <a
-                              href={`https://testnet.bscscan.com/tx/${transaction.transaction_hash}`}
+                              href={`https://bscscan.com/tx/${transaction.transaction_hash}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1 text-primary hover:underline text-sm"

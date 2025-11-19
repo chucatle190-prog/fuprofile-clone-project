@@ -25,7 +25,7 @@ const MetaMaskConnect = () => {
             <div>
               <h3 className="font-semibold mb-2">Kết nối ví MetaMask</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Kết nối ví để thanh toán bằng USDT trên BSC Testnet
+                Kết nối ví để thanh toán bằng USDT trên BNB Chain
               </p>
             </div>
             <Button onClick={connectWallet} disabled={isConnecting} size="lg" className="w-full">
@@ -62,7 +62,7 @@ const MetaMaskConnect = () => {
               <div className="flex-1">
                 <p className="text-sm font-medium text-destructive">Sai mạng</p>
                 <p className="text-xs text-destructive/80 mb-2">
-                  Vui lòng chuyển sang BSC Testnet
+                  Vui lòng chuyển sang BNB Chain
                 </p>
                 <Button
                   variant="outline"
@@ -70,7 +70,7 @@ const MetaMaskConnect = () => {
                   onClick={switchToBSCTestnet}
                   className="h-8"
                 >
-                  Chuyển sang BSC Testnet
+                  Chuyển sang BNB Chain
                 </Button>
               </div>
             </div>

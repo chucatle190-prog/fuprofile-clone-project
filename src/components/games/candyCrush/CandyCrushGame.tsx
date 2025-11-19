@@ -81,7 +81,7 @@ export default function CandyCrushGame() {
   const [achievementUsage, setAchievementUsage] = useState<Record<string, number>>({});
   
   const { toast } = useToast();
-  const { account, fuBalance, connectWallet, transferFU, isConnecting, switchToBSCTestnet, isCorrectNetwork } = useFUToken();
+  const { account, fuBalance, connectWallet, transferFU, isConnecting, switchToBNBChain, isCorrectNetwork } = useFUToken();
   const { playSound } = useSoundEffects();
   
   // Load user session
