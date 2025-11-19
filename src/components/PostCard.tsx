@@ -121,6 +121,66 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
     fetchShares();
   }, []);
 
+  // Realtime subscriptions for post updates
+  useEffect(() => {
+    const commentsChannel = supabase
+      .channel(`post-comments-${post.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'comments',
+          filter: `post_id=eq.${post.id}`
+        },
+        () => {
+          console.log('Comment change detected');
+          fetchComments();
+        }
+      )
+      .subscribe();
+
+    const reactionsChannel = supabase
+      .channel(`post-reactions-${post.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reactions',
+          filter: `post_id=eq.${post.id}`
+        },
+        () => {
+          console.log('Reaction change detected');
+          fetchReactions();
+        }
+      )
+      .subscribe();
+
+    const sharesChannel = supabase
+      .channel(`post-shares-${post.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'shares',
+          filter: `post_id=eq.${post.id}`
+        },
+        () => {
+          console.log('Share change detected');
+          fetchShares();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(commentsChannel);
+      supabase.removeChannel(reactionsChannel);
+      supabase.removeChannel(sharesChannel);
+    };
+  }, [post.id]);
+
   const handleReaction = async (reactionType: string) => {
     if (!currentUserId) return;
 

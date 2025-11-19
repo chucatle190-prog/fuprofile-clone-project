@@ -156,10 +156,12 @@ const Feed = () => {
   };
 
   useEffect(() => {
+    if (!user) return;
+    
     fetchFeed();
 
     const postsChannel = supabase
-      .channel("posts")
+      .channel(`feed-posts-${user.id}`)
       .on(
         "postgres_changes",
         {
@@ -167,14 +169,17 @@ const Feed = () => {
           schema: "public",
           table: "posts",
         },
-        () => {
+        (payload) => {
+          console.log('Post change detected:', payload);
           fetchFeed();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Posts channel status:', status);
+      });
 
     const sharesChannel = supabase
-      .channel("shares")
+      .channel(`feed-shares-${user.id}`)
       .on(
         "postgres_changes",
         {
@@ -182,17 +187,20 @@ const Feed = () => {
           schema: "public",
           table: "shares",
         },
-        () => {
+        (payload) => {
+          console.log('Share change detected:', payload);
           fetchFeed();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Shares channel status:', status);
+      });
 
     return () => {
       supabase.removeChannel(postsChannel);
       supabase.removeChannel(sharesChannel);
     };
-  }, []);
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
