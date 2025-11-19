@@ -30,16 +30,16 @@ interface WalletData {
   total_reward_camly: number;
 }
 
-const BSC_TESTNET = {
-  chainId: "0x61",
-  chainName: "BSC Testnet",
-  rpcUrls: ["https://data-seed-prebsc-1-s1.binance.org:8545/"],
+const BNB_CHAIN = {
+  chainId: "0x38",
+  chainName: "BNB Smart Chain",
+  rpcUrls: ["https://bsc-dataseed.binance.org/"],
   nativeCurrency: {
-    name: "tBNB",
-    symbol: "tBNB",
+    name: "BNB",
+    symbol: "BNB",
     decimals: 18,
   },
-  blockExplorerUrls: ["https://testnet.bscscan.com/"],
+  blockExplorerUrls: ["https://bscscan.com/"],
 };
 
 const CAMLY_TOKEN_ADDRESS = "0x0910320181889feFDE0BB1Ca63962b0A8882e413";
@@ -111,7 +111,7 @@ const Wallet = () => {
     try {
       await window.ethereum.request({
         method: "wallet_addEthereumChain",
-        params: [BSC_TESTNET],
+        params: [BNB_CHAIN],
       });
 
       const accounts = await window.ethereum.request({

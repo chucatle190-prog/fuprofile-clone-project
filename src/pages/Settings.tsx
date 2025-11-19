@@ -351,7 +351,7 @@ const Settings = () => {
                         placeholder="0x..."
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Địa chỉ ví BSC Testnet để nhận thanh toán USDT
+                        Địa chỉ ví BNB Chain để nhận thanh toán USDT
                       </p>
                     </div>
                     <Button onClick={handleUpdateProfile} disabled={loading} className="w-full">

@@ -36,7 +36,7 @@ const CryptoPayment = ({
     if (!account || !isCorrectNetwork) {
       toast({
         title: "Lỗi",
-        description: "Vui lòng kết nối ví MetaMask và chuyển sang BSC Testnet",
+        description: "Vui lòng kết nối ví MetaMask và chuyển sang BNB Chain",
         variant: "destructive",
       });
       return;
@@ -93,7 +93,7 @@ const CryptoPayment = ({
           transaction_hash: transactionHash,
           amount: amountNum,
           token_symbol: "USDT",
-          network: "BSC Testnet",
+          network: "BNB Chain",
           status: "confirmed",
         });
 
@@ -141,7 +141,7 @@ const CryptoPayment = ({
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          Vui lòng chuyển sang BSC Testnet để thanh toán
+          Vui lòng chuyển sang BNB Chain để thanh toán
         </AlertDescription>
       </Alert>
     );
@@ -160,7 +160,7 @@ const CryptoPayment = ({
               </p>
               {txHash && (
                 <a
-                  href={`https://testnet.bscscan.com/tx/${txHash}`}
+                  href={`https://bscscan.com/tx/${txHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-green-600 hover:underline break-all"

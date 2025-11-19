@@ -3,16 +3,16 @@ import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import { useToast } from "@/hooks/use-toast";
 import { FU_TOKEN_CONFIG } from "@/config/gameConfig";
 
-const BSC_TESTNET_PARAMS = {
-  chainId: "0x61",
-  chainName: "BSC Testnet",
+const BNB_CHAIN_PARAMS = {
+  chainId: "0x38",
+  chainName: "BNB Smart Chain",
   nativeCurrency: {
     name: "BNB",
-    symbol: "tBNB",
+    symbol: "BNB",
     decimals: 18,
   },
-  rpcUrls: ["https://data-seed-prebsc-1-s1.binance.org:8545/"],
-  blockExplorerUrls: ["https://testnet.bscscan.com/"],
+  rpcUrls: ["https://bsc-dataseed.binance.org/"],
+  blockExplorerUrls: ["https://bscscan.com/"],
 };
 
 const ERC20_ABI = [
@@ -111,8 +111,8 @@ export const useFUToken = () => {
         const currentChainId = `0x${network.chainId.toString(16)}`;
         setChainId(currentChainId);
 
-        if (currentChainId !== BSC_TESTNET_PARAMS.chainId) {
-          await switchToBSCTestnet();
+        if (currentChainId !== BNB_CHAIN_PARAMS.chainId) {
+          await switchToBNBChain();
         } else {
           toast({
             title: "Connected",
@@ -132,15 +132,15 @@ export const useFUToken = () => {
     }
   };
 
-  const switchToBSCTestnet = async () => {
+  const switchToBNBChain = async () => {
     try {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: BSC_TESTNET_PARAMS.chainId }],
+        params: [{ chainId: BNB_CHAIN_PARAMS.chainId }],
       });
       
       toast({
-        title: "Switched to BSC Testnet",
+        title: "Switched to BNB Chain",
         description: "Connected successfully",
       });
     } catch (error: any) {
@@ -148,7 +148,7 @@ export const useFUToken = () => {
         try {
           await window.ethereum.request({
             method: "wallet_addEthereumChain",
-            params: [BSC_TESTNET_PARAMS],
+            params: [BNB_CHAIN_PARAMS],
           });
         } catch (addError: any) {
           toast({
@@ -228,10 +228,10 @@ export const useFUToken = () => {
     fuBalance,
     isConnecting,
     chainId,
-    isCorrectNetwork: chainId === BSC_TESTNET_PARAMS.chainId,
+    isCorrectNetwork: chainId === BNB_CHAIN_PARAMS.chainId,
     connectWallet,
     disconnectWallet,
-    switchToBSCTestnet,
+    switchToBNBChain,
     addFUTokenToWallet,
     transferFU,
     updateBalances,

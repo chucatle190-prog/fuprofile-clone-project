@@ -436,7 +436,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Mạng: BSC Testnet | Phí gas: 0.0001 tBNB
+                Mạng: BNB Chain | Phí gas: 0.0001 BNB
               </p>
             </div>
           )}

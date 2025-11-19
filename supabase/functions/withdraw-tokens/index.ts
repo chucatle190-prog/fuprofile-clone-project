@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Happy Camly Coin contract address on BNB Chain
 const CAMLY_TOKEN_ADDRESS = '0x0910320181889feFDE0BB1Ca63962b0A8882e413'
-const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/'
+const BNB_CHAIN_RPC = 'https://bsc-dataseed.binance.org/'
 
 // ERC20 ABI for transfer function
 const ERC20_ABI = [
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     }
 
     // Setup Web3 provider and wallet
-    const provider = new ethers.JsonRpcProvider(BSC_TESTNET_RPC);
+    const provider = new ethers.JsonRpcProvider(BNB_CHAIN_RPC);
     const treasuryWallet = new ethers.Wallet(treasuryPrivateKey, provider);
     
     console.log(`Treasury wallet address: ${treasuryWallet.address}`);
@@ -154,8 +154,8 @@ Deno.serve(async (req) => {
         newBalance: newBalance,
         transactionHash: tx.hash,
         blockNumber: receipt.blockNumber,
-        explorerUrl: `https://testnet.bscscan.com/tx/${tx.hash}`,
-        message: `Đã rút ${withdrawAmount} F.U Token thành công!`,
+        explorerUrl: `https://bscscan.com/tx/${tx.hash}`,
+        message: `Đã rút ${withdrawAmount} Happy Camly thành công!`,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
