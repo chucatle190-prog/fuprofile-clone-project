@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Gift, Coins, Wallet, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useMetaMask } from "@/hooks/useMetaMask";
+import { useFUToken } from "@/hooks/useFUToken";
 import { FU_TOKEN_CONFIG } from "@/config/gameConfig";
 import TokenAnimation from "@/components/TokenAnimation";
 
@@ -33,7 +33,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
   const [tokenAnimAmount, setTokenAnimAmount] = useState(0);
   const [tokenAnimType, setTokenAnimType] = useState<'receive' | 'send'>('receive');
   const { toast } = useToast();
-  const { account, connectWallet, isConnecting } = useMetaMask();
+  const { account, connectWallet, isConnecting, addFUTokenToWallet } = useFUToken();
 
   useEffect(() => {
     fetchScores();
@@ -203,44 +203,8 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
   };
 
   const importTokenToMetaMask = async () => {
-    if (!window.ethereum) {
-      toast({
-        title: "MetaMask không tìm thấy",
-        description: "Vui lòng cài đặt MetaMask",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const wasAdded = await window.ethereum.request({
-        method: 'wallet_watchAsset',
-        params: {
-          type: 'ERC20',
-          options: {
-            address: FU_TOKEN_CONFIG.CONTRACT_ADDRESS,
-            symbol: FU_TOKEN_CONFIG.SYMBOL,
-            decimals: FU_TOKEN_CONFIG.DECIMALS,
-            image: 'https://via.placeholder.com/128', // Replace with actual token logo URL
-          },
-        },
-      });
-
-      if (wasAdded) {
-        toast({
-          title: "Thành công! 🎉",
-          description: "Happy Camly đã được thêm vào MetaMask",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể thêm Happy Camly",
-        variant: "destructive",
-      });
-    }
+    await addFUTokenToWallet();
   };
-
   const handleWithdraw = async () => {
     if (!walletAddress) {
       toast({
