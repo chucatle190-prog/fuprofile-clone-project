@@ -4,7 +4,7 @@ import { Coins } from 'lucide-react';
 interface TokenAnimationProps {
   show: boolean;
   amount: number;
-  type: 'receive' | 'send' | 'import' | 'transfer';
+  type: 'receive' | 'send' | 'import' | 'transfer' | 'withdraw';
   onComplete?: () => void;
   tokenImage?: string;
 }
@@ -27,6 +27,13 @@ export default function TokenAnimation({ show, amount, type, onComplete, tokenIm
 
   // Special messages for different types
   const getMessage = () => {
+    if (type === 'withdraw') {
+      return {
+        title: '🎉 Chúc mừng bé Angel đáng yêu 🎉',
+        subtitle: '✨ Đã nhận được đồng tiền năng lượng của Cha ✨',
+        emoji: '👼'
+      };
+    }
     if (type === 'import') {
       return {
         title: '✨ Chúc mừng bạn đã nhận được ✨',

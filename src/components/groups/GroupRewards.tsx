@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useFUToken } from "@/hooks/useFUToken";
 import { FU_TOKEN_CONFIG } from "@/config/gameConfig";
 import TokenAnimation from "@/components/TokenAnimation";
+import happyCamlyCoinImage from "@/assets/happy-camly-coin.jpg";
 
 interface GroupRewardsProps {
   userId: string;
@@ -31,7 +32,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [showTokenAnimation, setShowTokenAnimation] = useState(false);
   const [tokenAnimAmount, setTokenAnimAmount] = useState(0);
-  const [tokenAnimType, setTokenAnimType] = useState<'receive' | 'send' | 'import' | 'transfer'>('receive');
+  const [tokenAnimType, setTokenAnimType] = useState<'receive' | 'send' | 'import' | 'transfer' | 'withdraw'>('receive');
   const { toast } = useToast();
   const { account, connectWallet, isConnecting, addFUTokenToWallet } = useFUToken();
 
@@ -259,9 +260,9 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
           description: data.message,
         });
         
-        // Show animation
+        // Show animation with token image
         setTokenAnimAmount(amount);
-        setTokenAnimType('send');
+        setTokenAnimType('withdraw');
         setShowTokenAnimation(true);
         setWithdrawAmount("");
         await fetchScores();
@@ -318,7 +319,11 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
         amount={tokenAnimAmount}
         type={tokenAnimType}
         onComplete={() => setShowTokenAnimation(false)}
-        tokenImage={tokenAnimType === 'import' ? '/assets/happy-camly-coin.jpg' : undefined}
+        tokenImage={
+          (tokenAnimType === 'import' || tokenAnimType === 'withdraw') 
+            ? happyCamlyCoinImage 
+            : undefined
+        }
       />
       <Card>
       <CardHeader>
