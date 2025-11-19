@@ -255,11 +255,51 @@ const Wallet = () => {
     }
   };
 
+  const addTokenToMetaMask = async () => {
+    if (typeof window.ethereum === "undefined") {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng cài đặt MetaMask",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const wasAdded = await window.ethereum.request({
+        method: 'wallet_watchAsset',
+        params: {
+          type: 'ERC20',
+          options: {
+            address: CAMLY_TOKEN_ADDRESS,
+            symbol: 'CAMLY',
+            decimals: 18,
+            image: happyCamlyCoin,
+          },
+        },
+      });
+
+      if (wasAdded) {
+        toast({
+          title: "✅ Thành công!",
+          description: "Đã thêm Happy Camly vào MetaMask",
+        });
+      }
+    } catch (error) {
+      console.error('Error adding token:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể thêm token vào MetaMask",
+        variant: "destructive",
+      });
+    }
+  };
+
   const withdrawTokens = async () => {
     if (!user || !wallet?.wallet_address) {
       toast({
-        title: "Lỗi",
-        description: "Vui lòng kết nối ví MetaMask trước",
+        title: "Cần kết nối ví",
+        description: "Vui lòng kết nối ví MetaMask để nhận Happy Camly",
         variant: "destructive",
       });
       return;
@@ -268,8 +308,8 @@ const Wallet = () => {
     const withdrawAmount = wallet.camly_balance;
     if (withdrawAmount <= 0) {
       toast({
-        title: "Thông báo",
-        description: "Không có Happy Camly để rút",
+        title: "Không có token để rút",
+        description: "Bạn cần tích lũy Happy Camly trước khi rút",
         variant: "destructive",
       });
       return;
@@ -280,8 +320,8 @@ const Wallet = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       toast({
-        title: "Đang xử lý",
-        description: "Đang gửi giao dịch lên blockchain...",
+        title: "⏳ Đang xử lý...",
+        description: "Đang gửi token về ví MetaMask của bạn",
       });
 
       const { data, error } = await supabase.functions.invoke('withdraw-tokens', {
@@ -297,17 +337,17 @@ const Wallet = () => {
 
       if (data.success) {
         toast({
-          title: "Rút Happy Camly thành công!",
+          title: "🎉 Rút Happy Camly thành công!",
           description: (
-            <div className="space-y-1">
-              <p>Đã rút {data.amount} Happy Camly</p>
+            <div className="space-y-2">
+              <p className="font-semibold">Đã chuyển {data.amount.toLocaleString()} Happy Camly về ví</p>
               <a 
                 href={data.explorerUrl} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline block"
+                className="text-xs text-primary hover:underline block font-medium"
               >
-                Xem giao dịch trên BSCScan →
+                📋 Xem giao dịch trên BSCScan →
               </a>
             </div>
           ),
@@ -325,8 +365,8 @@ const Wallet = () => {
       }
     } catch (error: any) {
       toast({
-        title: "Lỗi rút Happy Camly",
-        description: error.message || "Không thể rút Happy Camly. Vui lòng thử lại.",
+        title: "❌ Không thể rút token",
+        description: error.message || "Vui lòng thử lại sau hoặc liên hệ hỗ trợ",
         variant: "destructive",
       });
     } finally {
@@ -441,12 +481,21 @@ const Wallet = () => {
                     </Button>
                   </div>
 
+                  <Button 
+                    variant="secondary" 
+                    className="w-full"
+                    onClick={addTokenToMetaMask}
+                  >
+                    <WalletIcon className="mr-2 h-4 w-4" />
+                    Thêm CAMLY vào MetaMask
+                  </Button>
+
                   {wallet.camly_balance > 0 && (
-                    <div className="p-4 bg-accent/10 border border-accent/20 rounded-lg">
-                      <p className="text-sm text-muted-foreground mb-1">Số dư có thể rút</p>
-                      <p className="text-2xl font-bold text-accent">{wallet.camly_balance} Camly</p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Token sẽ được chuyển từ treasury vào ví MetaMask của bạn
+                    <div className="p-4 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950 dark:to-amber-900 border-2 border-yellow-400 dark:border-yellow-600 rounded-lg">
+                      <p className="text-sm font-medium text-yellow-700 dark:text-yellow-300 mb-1">💰 Số dư có thể rút</p>
+                      <p className="text-3xl font-extrabold text-yellow-600 dark:text-yellow-200">{wallet.camly_balance.toLocaleString()} CAMLY</p>
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
+                        ✨ Token sẽ được chuyển trực tiếp vào ví MetaMask của bạn
                       </p>
                     </div>
                   )}
