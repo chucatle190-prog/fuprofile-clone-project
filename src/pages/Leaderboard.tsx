@@ -33,7 +33,7 @@ const Leaderboard = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { setTopHolder, setTopReceiver, setTopSender } = useTopRankings();
+  const { setTopHolders, setTopReceivers, setTopSenders } = useTopRankings();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -58,6 +58,42 @@ const Leaderboard = () => {
   useEffect(() => {
     if (user) {
       fetchLeaderboards();
+      
+      // Setup realtime subscriptions for automatic updates
+      const walletsChannel = supabase
+        .channel('leaderboard-wallets')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'user_wallets'
+          },
+          () => {
+            fetchLeaderboards();
+          }
+        )
+        .subscribe();
+      
+      const transfersChannel = supabase
+        .channel('leaderboard-transfers')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'token_transfers'
+          },
+          () => {
+            fetchLeaderboards();
+          }
+        )
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(walletsChannel);
+        supabase.removeChannel(transfersChannel);
+      };
     }
   }, [user]);
 
@@ -108,10 +144,8 @@ const Leaderboard = () => {
         }
         setHoldersLeaderboard(enrichedHolders);
         
-        // Set top holder
-        if (enrichedHolders.length > 0) {
-          setTopHolder(enrichedHolders[0].user_id);
-        }
+        // Set top 10 holders
+        setTopHolders(enrichedHolders.map(h => h.user_id));
       }
 
       // Process receivers
@@ -143,10 +177,8 @@ const Leaderboard = () => {
         }
         setReceiversLeaderboard(enrichedReceivers);
         
-        // Set top receiver
-        if (enrichedReceivers.length > 0) {
-          setTopReceiver(enrichedReceivers[0].user_id);
-        }
+        // Set top 10 receivers
+        setTopReceivers(enrichedReceivers.map(r => r.user_id));
       }
 
       // Process senders
@@ -178,10 +210,8 @@ const Leaderboard = () => {
         }
         setSendersLeaderboard(enrichedSenders);
         
-        // Set top sender
-        if (enrichedSenders.length > 0) {
-          setTopSender(enrichedSenders[0].user_id);
-        }
+        // Set top 10 senders
+        setTopSenders(enrichedSenders.map(s => s.user_id));
       }
     } catch (error: any) {
       toast({
