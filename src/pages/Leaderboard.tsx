@@ -450,6 +450,7 @@ const Leaderboard = () => {
         category={latestRankChange?.category || 'holder'}
         rank={latestRankChange?.rank || 1}
         previousRank={latestRankChange?.previousRank || null}
+        type={latestRankChange?.type || 'up'}
         onComplete={clearRankChange}
       />
 

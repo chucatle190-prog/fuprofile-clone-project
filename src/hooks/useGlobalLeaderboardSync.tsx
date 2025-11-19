@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTopRankings } from './useTopRankings';
+import { toast } from '@/hooks/use-toast';
 
 interface LeaderboardEntry {
   user_id: string;
@@ -8,7 +9,29 @@ interface LeaderboardEntry {
 }
 
 export const useGlobalLeaderboardSync = (userId: string | undefined) => {
-  const { setTopHolders, setTopReceivers, setTopSenders } = useTopRankings();
+  const { setTopHolders, setTopReceivers, setTopSenders, latestRankChange } = useTopRankings();
+
+  // Show toast notification when rank changes
+  useEffect(() => {
+    if (latestRankChange && latestRankChange.type === 'down') {
+      const getCategoryName = () => {
+        switch (latestRankChange.category) {
+          case 'holder':
+            return 'giữ CAMLY';
+          case 'receiver':
+            return 'nhận CAMLY';
+          case 'sender':
+            return 'chuyển CAMLY';
+        }
+      };
+
+      toast({
+        title: "⚠️ Thứ hạng thay đổi",
+        description: `Ai đó đã vượt qua bạn trong bảng xếp hạng ${getCategoryName()}! Bạn đã xuống từ hạng ${latestRankChange.previousRank} xuống hạng ${latestRankChange.rank}.`,
+        variant: "destructive",
+      });
+    }
+  }, [latestRankChange]);
 
   useEffect(() => {
     if (!userId) return;
