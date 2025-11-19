@@ -6,6 +6,7 @@ interface RankChange {
   rank: number;
   previousRank: number | null;
   timestamp: number;
+  type: 'up' | 'down'; // New: track if rank improved or worsened
 }
 
 interface TopRankingsState {
@@ -53,14 +54,26 @@ export const useTopRankings = create<TopRankingsState>()(
             ? newList.indexOf(currentUserId) + 1 
             : null;
           
-          // Check if rank improved (lower number = better rank)
-          if (newRank && (previousRank === null || newRank < previousRank)) {
+          // Check if rank changed
+          if (newRank && previousRank && newRank !== previousRank) {
             set({ 
               latestRankChange: {
                 category: 'holder',
                 rank: newRank,
                 previousRank: previousRank,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                type: newRank < previousRank ? 'up' : 'down'
+              }
+            });
+          } else if (newRank && previousRank === null) {
+            // First time entering leaderboard
+            set({ 
+              latestRankChange: {
+                category: 'holder',
+                rank: newRank,
+                previousRank: null,
+                timestamp: Date.now(),
+                type: 'up'
               }
             });
           }
@@ -85,13 +98,25 @@ export const useTopRankings = create<TopRankingsState>()(
             ? newList.indexOf(currentUserId) + 1 
             : null;
           
-          if (newRank && (previousRank === null || newRank < previousRank)) {
+          // Check if rank changed
+          if (newRank && previousRank && newRank !== previousRank) {
             set({ 
               latestRankChange: {
                 category: 'receiver',
                 rank: newRank,
                 previousRank: previousRank,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                type: newRank < previousRank ? 'up' : 'down'
+              }
+            });
+          } else if (newRank && previousRank === null) {
+            set({ 
+              latestRankChange: {
+                category: 'receiver',
+                rank: newRank,
+                previousRank: null,
+                timestamp: Date.now(),
+                type: 'up'
               }
             });
           }
@@ -116,13 +141,25 @@ export const useTopRankings = create<TopRankingsState>()(
             ? newList.indexOf(currentUserId) + 1 
             : null;
           
-          if (newRank && (previousRank === null || newRank < previousRank)) {
+          // Check if rank changed
+          if (newRank && previousRank && newRank !== previousRank) {
             set({ 
               latestRankChange: {
                 category: 'sender',
                 rank: newRank,
                 previousRank: previousRank,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                type: newRank < previousRank ? 'up' : 'down'
+              }
+            });
+          } else if (newRank && previousRank === null) {
+            set({ 
+              latestRankChange: {
+                category: 'sender',
+                rank: newRank,
+                previousRank: null,
+                timestamp: Date.now(),
+                type: 'up'
               }
             });
           }

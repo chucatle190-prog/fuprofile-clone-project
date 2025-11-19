@@ -5,6 +5,7 @@ interface RankUpAnimationProps {
   category: 'holder' | 'receiver' | 'sender';
   rank: number;
   previousRank: number | null;
+  type: 'up' | 'down'; // New: type of rank change
   onComplete?: () => void;
 }
 
@@ -13,6 +14,7 @@ export default function RankUpAnimation({
   category, 
   rank, 
   previousRank,
+  type,
   onComplete 
 }: RankUpAnimationProps) {
   useEffect(() => {
@@ -27,61 +29,91 @@ export default function RankUpAnimation({
   if (!show) return null;
 
   const getMessage = () => {
-    // Holder messages
+    // Rank down messages
+    if (type === 'down') {
+      if (category === 'holder') {
+        return {
+          title: "⚠️ Ai đó đã vượt qua bạn!",
+          subtitle: `Bạn đã xuống từ hạng ${previousRank} xuống hạng ${rank}`,
+          emoji: "😮",
+          color: "from-red-400 via-orange-500 to-red-600"
+        };
+      } else if (category === 'receiver') {
+        return {
+          title: "⚠️ Ai đó đã nhận nhiều CAMLY hơn bạn!",
+          subtitle: `Bạn đã xuống từ hạng ${previousRank} xuống hạng ${rank}`,
+          emoji: "📉",
+          color: "from-red-400 via-orange-500 to-red-600"
+        };
+      } else {
+        return {
+          title: "⚠️ Ai đó đã chuyển nhiều CAMLY hơn bạn!",
+          subtitle: `Bạn đã xuống từ hạng ${previousRank} xuống hạng ${rank}`,
+          emoji: "📊",
+          color: "from-red-400 via-orange-500 to-red-600"
+        };
+      }
+    }
+    
+    // Rank up messages (original logic)
     if (category === 'holder') {
       if (rank === 1) {
         return {
           title: "🎉 Wow bạn đã là tỷ phú hàng đầu!",
           subtitle: "Bạn có thể cho tôi một ít không 😊",
-          emoji: "💰"
+          emoji: "💰",
+          color: "from-yellow-400 via-amber-500 to-yellow-600"
         };
       } else {
         return {
           title: "🎊 Wowwww bạn đã vượt qua tỷ phú đầu tiên!",
           subtitle: `Bạn đang ở hạng ${rank}`,
-          emoji: "🚀"
+          emoji: "🚀",
+          color: "from-yellow-400 via-amber-500 to-yellow-600"
         };
       }
     }
     
-    // Receiver messages
     if (category === 'receiver') {
       if (rank === 1) {
         return {
           title: "✨ Wow năng lượng yêu thương của bé thật tuyệt!",
           subtitle: "Bạn nhận nhiều CAMLY nhất",
-          emoji: "💝"
+          emoji: "💝",
+          color: "from-yellow-400 via-amber-500 to-yellow-600"
         };
       } else {
         return {
           title: "🌟 Wow bạn vừa nhận token nhiều hơn một người!",
           subtitle: `Bạn đang ở hạng ${rank}`,
-          emoji: "🎁"
+          emoji: "🎁",
+          color: "from-yellow-400 via-amber-500 to-yellow-600"
         };
       }
     }
     
-    // Sender messages
     if (category === 'sender') {
       if (rank === 1) {
         return {
           title: "👑 Wow bạn là một đại tỷ phú về lòng yêu thương thuần khiết!",
           subtitle: "Bạn chuyển nhiều CAMLY nhất",
-          emoji: "💖"
+          emoji: "💖",
+          color: "from-yellow-400 via-amber-500 to-yellow-600"
         };
       } else {
         return {
           title: "💫 Wow dòng Camly coin của bạn chuyển đi đã nhiều hơn một người!",
           subtitle: `Bạn đang ở hạng ${rank}`,
-          emoji: "🌊"
+          emoji: "🌊",
+          color: "from-yellow-400 via-amber-500 to-yellow-600"
         };
       }
     }
     
-    return { title: "", subtitle: "", emoji: "" };
+    return { title: "", subtitle: "", emoji: "", color: "from-yellow-400 via-amber-500 to-yellow-600" };
   };
 
-  const { title, subtitle, emoji } = getMessage();
+  const { title, subtitle, emoji, color } = getMessage();
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
@@ -99,7 +131,7 @@ export default function RankUpAnimation({
         </div>
         
         {/* Title with gradient */}
-        <h2 className="text-4xl md:text-5xl font-black mb-4 bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-600 bg-clip-text text-transparent drop-shadow-2xl animate-in slide-in-from-bottom-4 duration-700">
+        <h2 className={`text-4xl md:text-5xl font-black mb-4 bg-gradient-to-r ${color} bg-clip-text text-transparent drop-shadow-2xl animate-in slide-in-from-bottom-4 duration-700`}>
           {title}
         </h2>
         
@@ -109,8 +141,8 @@ export default function RankUpAnimation({
         </p>
         
         {/* Rank badge */}
-        <div className="mt-6 inline-block bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 text-white px-8 py-3 rounded-full font-black text-2xl shadow-2xl animate-in zoom-in duration-700 delay-300">
-          TOP {rank}
+        <div className={`mt-6 inline-block bg-gradient-to-br ${color} text-white px-8 py-3 rounded-full font-black text-2xl shadow-2xl animate-in zoom-in duration-700 delay-300`}>
+          {type === 'down' ? '⬇️' : '⬆️'} TOP {rank}
         </div>
       </div>
       
