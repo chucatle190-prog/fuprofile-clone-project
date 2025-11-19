@@ -111,12 +111,12 @@ serve(async (req) => {
       );
     }
 
-    // If receiver doesn't have a wallet, create one using admin client
+    // If receiver doesn't have a wallet, create one using helper function
     if (!receiverWallet) {
       console.log('Creating wallet for receiver:', receiver_id);
-      const { error: createError } = await supabaseAdmin
-        .from('user_wallets')
-        .insert({ user_id: receiver_id });
+      const { error: createError } = await supabaseAdmin.rpc('ensure_user_wallet', {
+        p_user_id: receiver_id
+      });
 
       if (createError) {
         console.error('Failed to create receiver wallet:', createError);
