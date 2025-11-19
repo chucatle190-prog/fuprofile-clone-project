@@ -90,19 +90,35 @@ serve(async (req) => {
       );
     }
 
-    // Check if receiver exists
-    const { data: receiverWallet, error: receiverError } = await supabaseClient
+    // Check if receiver exists and get/create their wallet
+    let { data: receiverWallet, error: receiverError } = await supabaseClient
       .from('user_wallets')
-      .select('user_id')
+      .select('user_id, camly_balance')
       .eq('user_id', receiver_id)
-      .single();
+      .maybeSingle();
 
-    if (receiverError || !receiverWallet) {
-      console.error('Receiver wallet error:', receiverError);
+    if (receiverError) {
+      console.error('Receiver wallet query error:', receiverError);
       return new Response(
-        JSON.stringify({ error: 'Receiver not found', success: false }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+        JSON.stringify({ error: 'Database error', success: false }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
+    }
+
+    // If receiver doesn't have a wallet, create one
+    if (!receiverWallet) {
+      console.log('Creating wallet for receiver:', receiver_id);
+      const { error: createError } = await supabaseClient
+        .from('user_wallets')
+        .insert({ user_id: receiver_id });
+
+      if (createError) {
+        console.error('Failed to create receiver wallet:', createError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create receiver wallet', success: false }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
     }
 
     // Deduct from sender
