@@ -60,9 +60,9 @@ const Leaderboard = () => {
     if (user) {
       fetchLeaderboards();
       
-      // Setup realtime subscriptions for automatic updates
+      // Setup realtime subscriptions with unique channel names
       const walletsChannel = supabase
-        .channel('leaderboard-wallets')
+        .channel(`page-leaderboard-wallets-${user.id}`)
         .on(
           'postgres_changes',
           {
@@ -70,14 +70,17 @@ const Leaderboard = () => {
             schema: 'public',
             table: 'user_wallets'
           },
-          () => {
+          (payload) => {
+            console.log('Leaderboard page - wallet change:', payload);
             fetchLeaderboards();
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Leaderboard page - wallets channel:', status);
+        });
       
       const transfersChannel = supabase
-        .channel('leaderboard-transfers')
+        .channel(`page-leaderboard-transfers-${user.id}`)
         .on(
           'postgres_changes',
           {
@@ -85,11 +88,14 @@ const Leaderboard = () => {
             schema: 'public',
             table: 'token_transfers'
           },
-          () => {
+          (payload) => {
+            console.log('Leaderboard page - transfer detected:', payload);
             fetchLeaderboards();
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Leaderboard page - transfers channel:', status);
+        });
       
       return () => {
         supabase.removeChannel(walletsChannel);

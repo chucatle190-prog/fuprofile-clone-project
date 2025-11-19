@@ -97,9 +97,9 @@ export const useGlobalLeaderboardSync = (userId: string | undefined) => {
     // Initial fetch
     fetchAndUpdateRankings();
 
-    // Setup realtime subscriptions
+    // Setup realtime subscriptions with better channel names
     const walletsChannel = supabase
-      .channel('global-leaderboard-wallets')
+      .channel(`leaderboard-wallets-${userId}`)
       .on(
         'postgres_changes',
         {
@@ -107,14 +107,17 @@ export const useGlobalLeaderboardSync = (userId: string | undefined) => {
           schema: 'public',
           table: 'user_wallets'
         },
-        () => {
+        (payload) => {
+          console.log('Wallet change detected:', payload);
           fetchAndUpdateRankings();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Wallets channel status:', status);
+      });
 
     const transfersChannel = supabase
-      .channel('global-leaderboard-transfers')
+      .channel(`leaderboard-transfers-${userId}`)
       .on(
         'postgres_changes',
         {
@@ -122,11 +125,14 @@ export const useGlobalLeaderboardSync = (userId: string | undefined) => {
           schema: 'public',
           table: 'token_transfers'
         },
-        () => {
+        (payload) => {
+          console.log('Transfer detected:', payload);
           fetchAndUpdateRankings();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Transfers channel status:', status);
+      });
 
     return () => {
       supabase.removeChannel(walletsChannel);
