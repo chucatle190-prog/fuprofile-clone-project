@@ -30,6 +30,7 @@ interface Profile {
   lives_in: string | null;
   from_location: string | null;
   relationship: string | null;
+  wallet_address: string | null;
 }
 
 interface Post {

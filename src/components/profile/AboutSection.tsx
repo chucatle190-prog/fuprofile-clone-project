@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Briefcase, GraduationCap, Home, MapPin, Heart, Edit2, Save, X } from "lucide-react";
+import { Briefcase, GraduationCap, Home, MapPin, Heart, Edit2, Save, X, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,6 +18,7 @@ interface Profile {
   lives_in: string | null;
   from_location: string | null;
   relationship: string | null;
+  wallet_address: string | null;
 }
 
 interface AboutSectionProps {
@@ -36,6 +37,7 @@ const AboutSection = ({ profile, isOwnProfile, onUpdate }: AboutSectionProps) =>
     lives_in: profile.lives_in || "",
     from_location: profile.from_location || "",
     relationship: profile.relationship || "",
+    wallet_address: profile.wallet_address || "",
   });
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -76,6 +78,7 @@ const AboutSection = ({ profile, isOwnProfile, onUpdate }: AboutSectionProps) =>
       lives_in: profile.lives_in || "",
       from_location: profile.from_location || "",
       relationship: profile.relationship || "",
+      wallet_address: profile.wallet_address || "",
     });
     setEditing(false);
   };
@@ -161,6 +164,15 @@ const AboutSection = ({ profile, isOwnProfile, onUpdate }: AboutSectionProps) =>
               placeholder="Độc thân, Đang hẹn hò, Đã kết hôn..."
             />
           </div>
+
+          <div className="space-y-2">
+            <Label>Địa chỉ ví</Label>
+            <Input
+              value={formData.wallet_address}
+              onChange={(e) => setFormData({ ...formData, wallet_address: e.target.value })}
+              placeholder="0x..."
+            />
+          </div>
         </CardContent>
       </Card>
     );
@@ -219,7 +231,14 @@ const AboutSection = ({ profile, isOwnProfile, onUpdate }: AboutSectionProps) =>
             </div>
           )}
 
-          {!profile.work && !profile.education && !profile.lives_in && !profile.from_location && !profile.relationship && !profile.bio && (
+          {profile.wallet_address && (
+            <div className="flex items-center gap-3">
+              <Wallet className="h-5 w-5 text-muted-foreground" />
+              <span className="font-mono text-sm truncate">{profile.wallet_address}</span>
+            </div>
+          )}
+
+          {!profile.work && !profile.education && !profile.lives_in && !profile.from_location && !profile.relationship && !profile.wallet_address && !profile.bio && (
             <p className="text-center text-muted-foreground py-4">
               {isOwnProfile ? "Thêm thông tin về bản thân" : "Chưa có thông tin"}
             </p>
