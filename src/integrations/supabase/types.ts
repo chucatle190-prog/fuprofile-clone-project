@@ -1224,6 +1224,7 @@ export type Database = {
         Args: { other_user_id: string }
         Returns: string
       }
+      ensure_user_wallet: { Args: { p_user_id: string }; Returns: undefined }
       has_group_role: {
         Args: { _group_id: string; _role: string; _user_id: string }
         Returns: boolean
