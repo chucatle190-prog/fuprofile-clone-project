@@ -343,7 +343,7 @@ const Settings = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="wallet">Địa chỉ ví (cho Marketplace)</Label>
+                      <Label htmlFor="wallet">Địa chỉ ví MetaMask</Label>
                       <Input
                         id="wallet"
                         value={walletAddress}
@@ -351,7 +351,7 @@ const Settings = () => {
                         placeholder="0x..."
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Địa chỉ ví BNB Chain để nhận thanh toán USDT
+                        Địa chỉ ví BNB Chain để nhận Happy Camly từ bạn bè chuyển
                       </p>
                     </div>
                     <Button onClick={handleUpdateProfile} disabled={loading} className="w-full">
