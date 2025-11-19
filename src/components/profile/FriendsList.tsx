@@ -177,6 +177,7 @@ const FriendsList = ({ userId }: FriendsListProps) => {
           receiverId={selectedFriend.id}
           receiverName={selectedFriend.full_name || selectedFriend.username}
           receiverAvatar={selectedFriend.avatar_url}
+          receiverWalletAddress={selectedFriend.wallet_address}
           currentBalance={currentBalance}
           onTransferSuccess={() => {
             fetchBalance();

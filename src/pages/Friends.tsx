@@ -22,6 +22,7 @@ interface Profile {
   full_name: string | null;
   avatar_url: string | null;
   bio: string | null;
+  wallet_address: string | null;
 }
 
 interface Friendship {
@@ -76,7 +77,7 @@ const Friends = () => {
       .from("friendships")
       .select(`
         *,
-        profiles!friendships_user_id_fkey (id, username, full_name, avatar_url, bio)
+        profiles!friendships_user_id_fkey (id, username, full_name, avatar_url, bio, wallet_address)
       `)
       .eq("friend_id", userId)
       .eq("status", "pending");
@@ -86,7 +87,7 @@ const Friends = () => {
       .from("friendships")
       .select(`
         *,
-        profiles!friendships_friend_id_fkey (id, username, full_name, avatar_url, bio)
+        profiles!friendships_friend_id_fkey (id, username, full_name, avatar_url, bio, wallet_address)
       `)
       .eq("user_id", userId)
       .eq("status", "accepted");
@@ -95,7 +96,7 @@ const Friends = () => {
       .from("friendships")
       .select(`
         *,
-        profiles!friendships_user_id_fkey (id, username, full_name, avatar_url, bio)
+        profiles!friendships_user_id_fkey (id, username, full_name, avatar_url, bio, wallet_address)
       `)
       .eq("friend_id", userId)
       .eq("status", "accepted");
@@ -293,6 +294,7 @@ const Friends = () => {
           receiverId={selectedFriend.id}
           receiverName={selectedFriend.full_name || selectedFriend.username}
           receiverAvatar={selectedFriend.avatar_url}
+          receiverWalletAddress={selectedFriend.wallet_address}
           currentBalance={currentBalance}
           onTransferSuccess={handleTransferSuccess}
         />
