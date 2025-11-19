@@ -8,7 +8,13 @@ const corsHeaders = {
 
 // Happy Camly Coin contract address on BNB Chain
 const CAMLY_TOKEN_ADDRESS = '0x0910320181889feFDE0BB1Ca63962b0A8882e413'
-const BNB_CHAIN_RPC = 'https://bsc-dataseed.binance.org/'
+// Use multiple RPC endpoints for reliability
+const BNB_CHAIN_RPCS = [
+  'https://bsc-dataseed1.binance.org',
+  'https://bsc-dataseed2.binance.org',
+  'https://bsc-dataseed3.binance.org',
+  'https://bsc-dataseed.binance.org',
+]
 
 // ERC20 ABI for transfer function
 const ERC20_ABI = [
@@ -84,9 +90,29 @@ Deno.serve(async (req) => {
       throw new Error(`Số dư không đủ. Số dư hiện tại: ${currentBalance} Camly`);
     }
 
-    // Connect to BNB Chain and send on-chain transfer from treasury to user wallet
-    const provider = new ethers.JsonRpcProvider(BNB_CHAIN_RPC);
+    // Connect to BNB Chain with fallback RPCs
+    let provider: ethers.JsonRpcProvider | null = null;
+    let lastError: Error | null = null;
+    
+    for (const rpc of BNB_CHAIN_RPCS) {
+      try {
+        const testProvider = new ethers.JsonRpcProvider(rpc);
+        await testProvider.getBlockNumber(); // Test connection
+        provider = testProvider;
+        console.log(`Successfully connected to RPC: ${rpc}`);
+        break;
+      } catch (err) {
+        console.log(`Failed to connect to ${rpc}:`, err);
+        lastError = err as Error;
+      }
+    }
+    
+    if (!provider) {
+      throw new Error(`Không thể kết nối đến BNB Chain. Lỗi cuối: ${lastError?.message}`);
+    }
+    
     const treasuryWallet = new ethers.Wallet(treasuryPrivateKey, provider);
+    console.log('Treasury wallet address:', treasuryWallet.address);
     
     // Check treasury has enough BNB for gas
     const treasuryBnbBalance = await provider.getBalance(treasuryWallet.address);
@@ -98,15 +124,24 @@ Deno.serve(async (req) => {
     
     const camlyContract = new ethers.Contract(CAMLY_TOKEN_ADDRESS, ERC20_ABI, treasuryWallet);
 
-    // Ensure treasury has enough CAMLY
+    // Get token decimals and treasury balance with extensive logging
+    console.log('Fetching token decimals...');
     const decimals = await camlyContract.decimals();
-    const amountInUnits = ethers.parseUnits(withdrawAmount.toString(), decimals);
+    console.log('Token decimals:', decimals);
+    
+    console.log('Fetching treasury CAMLY balance...');
     const treasuryBalanceRaw = await camlyContract.balanceOf(treasuryWallet.address);
+    console.log('Treasury balance (raw):', treasuryBalanceRaw.toString());
+    
     const treasuryBalance = Number(ethers.formatUnits(treasuryBalanceRaw, decimals));
+    console.log('Treasury balance (formatted):', treasuryBalance, 'CAMLY');
 
     if (treasuryBalance < withdrawAmount) {
-      throw new Error(`Treasury không đủ CAMLY để rút. Số dư Treasury: ${treasuryBalance} CAMLY`);
+      throw new Error(`Treasury không đủ CAMLY để rút. Cần: ${withdrawAmount} CAMLY, Có: ${treasuryBalance} CAMLY, Raw: ${treasuryBalanceRaw.toString()}`);
     }
+    
+    const amountInUnits = ethers.parseUnits(withdrawAmount.toString(), decimals);
+    console.log('Amount to transfer (in units):', amountInUnits.toString());
 
     console.log(`Sending on-chain withdrawal: ${withdrawAmount} CAMLY from ${treasuryWallet.address} to ${wallet.wallet_address}`);
 
