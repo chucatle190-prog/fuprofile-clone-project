@@ -162,7 +162,21 @@ export const useFUToken = () => {
   };
 
   const addFUTokenToWallet = async () => {
+    if (typeof window.ethereum === "undefined") {
+      toast({
+        title: "MetaMask không được cài đặt",
+        description: "Vui lòng cài đặt MetaMask extension",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
+      // Đảm bảo đang ở mạng BNB Chain trước khi import token
+      if (chainId !== BNB_CHAIN_PARAMS.chainId) {
+        await switchToBNBChain();
+      }
+
       await window.ethereum.request({
         method: 'wallet_watchAsset',
         params: {
@@ -177,8 +191,8 @@ export const useFUToken = () => {
       });
       
       toast({
-        title: "Đã thêm Happy Camly",
-        description: "Happy Camly đã được thêm vào MetaMask",
+        title: "Đã thêm Happy Camly (CAMLY)",
+        description: "Token CAMLY trên mạng BNB Chain đã được thêm vào MetaMask",
       });
     } catch (error: any) {
       toast({
