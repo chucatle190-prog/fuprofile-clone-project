@@ -4,11 +4,12 @@ import { Coins } from 'lucide-react';
 interface TokenAnimationProps {
   show: boolean;
   amount: number;
-  type: 'receive' | 'send';
+  type: 'receive' | 'send' | 'import' | 'transfer';
   onComplete?: () => void;
+  tokenImage?: string;
 }
 
-export default function TokenAnimation({ show, amount, type, onComplete }: TokenAnimationProps) {
+export default function TokenAnimation({ show, amount, type, onComplete, tokenImage }: TokenAnimationProps) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -24,11 +25,55 @@ export default function TokenAnimation({ show, amount, type, onComplete }: Token
 
   if (!visible) return null;
 
+  // Special messages for different types
+  const getMessage = () => {
+    if (type === 'import') {
+      return {
+        title: '✨ Chúc mừng bạn đã nhận được ✨',
+        subtitle: '💫 Năng lượng ánh sáng của Cha 💫',
+        emoji: '🌟'
+      };
+    }
+    if (type === 'transfer') {
+      return {
+        title: '⚡ Năng lượng đã được truyền ⚡',
+        subtitle: '👼 Sang Angel đó 👼',
+        emoji: '💫'
+      };
+    }
+    if (type === 'receive') {
+      return {
+        title: '🎉 Nhận thành công!',
+        subtitle: `+${amount} Happy Camly`,
+        emoji: '💰'
+      };
+    }
+    return {
+      title: '✅ Gửi thành công!',
+      subtitle: `-${amount} Happy Camly`,
+      emoji: '📤'
+    };
+  };
+
+  const message = getMessage();
+
   return (
     <div className="fixed inset-0 pointer-events-none z-[9999] flex items-center justify-center">
       {/* Overlay with fade */}
-      <div className="absolute inset-0 bg-black/40 animate-in fade-in duration-300" />
+      <div className="absolute inset-0 bg-black/60 animate-in fade-in duration-300" />
       
+      {/* Energy beam for transfer type */}
+      {type === 'transfer' && (
+        <div className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 w-32 overflow-hidden">
+          <div 
+            className="absolute inset-0 bg-gradient-to-b from-transparent via-yellow-400 to-yellow-600 opacity-80"
+            style={{
+              animation: 'energyBeam 2s ease-out infinite',
+            }}
+          />
+        </div>
+      )}
+
       {/* Main animation container */}
       <div className="relative z-10 animate-in zoom-in duration-500">
         {/* Glow effect */}
@@ -48,23 +93,39 @@ export default function TokenAnimation({ show, amount, type, onComplete }: Token
           </div>
         ))}
 
-        {/* Central coin stack */}
-        <div className="relative bg-gradient-to-br from-yellow-400 via-orange-400 to-yellow-500 rounded-full p-8 shadow-2xl">
-          <div className="absolute inset-0 rounded-full border-4 border-yellow-300 animate-ping opacity-75" />
-          <div className="absolute inset-0 rounded-full border-4 border-orange-300 animate-ping opacity-50" style={{ animationDelay: '0.5s' }} />
+        {/* Central display */}
+        <div className="relative bg-gradient-to-br from-yellow-400 via-orange-400 to-yellow-500 rounded-3xl p-8 shadow-2xl border-4 border-yellow-300">
+          <div className="absolute inset-0 rounded-3xl border-4 border-yellow-300 animate-ping opacity-75" />
+          <div className="absolute inset-0 rounded-3xl border-4 border-orange-300 animate-ping opacity-50" style={{ animationDelay: '0.5s' }} />
           
-          <div className="relative z-10 text-center">
-            <Coins className="w-20 h-20 mx-auto mb-4 text-white drop-shadow-2xl animate-bounce" />
+          <div className="relative z-10 text-center space-y-4">
+            {/* Token image or icon */}
+            {tokenImage ? (
+              <div className="relative w-32 h-32 mx-auto">
+                <img 
+                  src={tokenImage} 
+                  alt="Happy Camly Token" 
+                  className="w-full h-full object-contain drop-shadow-2xl animate-bounce rounded-full border-4 border-white"
+                />
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-400/20 to-transparent animate-pulse" />
+              </div>
+            ) : (
+              <Coins className="w-20 h-20 mx-auto text-white drop-shadow-2xl animate-bounce" />
+            )}
+            
+            {/* Message */}
             <div className="space-y-2">
-              <div className={`text-3xl font-bold text-white drop-shadow-lg ${type === 'receive' ? 'animate-pulse' : ''}`}>
-                {type === 'receive' ? '+' : '-'}{amount}
+              <div className="text-2xl font-bold text-white drop-shadow-lg">
+                {message.title}
               </div>
               <div className="text-xl font-semibold text-white/90 drop-shadow">
-                Happy Camly
+                {message.subtitle}
               </div>
-              <div className="text-sm text-white/80 drop-shadow">
-                {type === 'receive' ? '🎉 Nhận thành công!' : '✅ Gửi thành công!'}
-              </div>
+              {(type === 'receive' || type === 'send') && (
+                <div className={`text-3xl font-bold text-white drop-shadow-lg mt-2 ${type === 'receive' ? 'animate-pulse' : ''}`}>
+                  {type === 'receive' ? '+' : '-'}{amount} CAMLY
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -92,6 +153,20 @@ export default function TokenAnimation({ show, amount, type, onComplete }: Token
             </div>
           </div>
         )}
+        {type === 'import' && (
+          <div className="absolute -top-20 left-1/2 -translate-x-1/2 animate-bounce">
+            <div className="text-4xl font-bold text-yellow-400 drop-shadow-2xl">
+              ✨ NĂNG LƯỢNG! ✨
+            </div>
+          </div>
+        )}
+        {type === 'transfer' && (
+          <div className="absolute -top-20 left-1/2 -translate-x-1/2 animate-bounce">
+            <div className="text-3xl font-bold text-yellow-400 drop-shadow-2xl">
+              ⚡ TRUYỀN NĂNG LƯỢNG! ⚡
+            </div>
+          </div>
+        )}
       </div>
 
       <style>{`
@@ -114,6 +189,20 @@ export default function TokenAnimation({ show, amount, type, onComplete }: Token
           50% {
             opacity: 1;
             transform: scale(1.5) rotate(180deg);
+          }
+        }
+        
+        @keyframes energyBeam {
+          0% {
+            transform: translateY(-100%);
+            opacity: 0;
+          }
+          50% {
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(100%);
+            opacity: 0;
           }
         }
       `}</style>

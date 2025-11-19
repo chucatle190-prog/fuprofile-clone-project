@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Wallet as WalletIcon, Send, Download, Gift, Copy, QrCode } from "lucide-react";
 import TokenAnimation from "@/components/TokenAnimation";
+import happyCamlyCoin from "@/assets/happy-camly-coin.jpg";
 
 declare global {
   interface Window {
@@ -51,7 +52,7 @@ const Wallet = () => {
   const [loading, setLoading] = useState(true);
   const [showTokenAnimation, setShowTokenAnimation] = useState(false);
   const [tokenAnimAmount, setTokenAnimAmount] = useState(0);
-  const [tokenAnimType, setTokenAnimType] = useState<'receive' | 'send'>('receive');
+  const [tokenAnimType, setTokenAnimType] = useState<'receive' | 'send' | 'import' | 'transfer'>('receive');
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -340,6 +341,7 @@ const Wallet = () => {
         amount={tokenAnimAmount}
         type={tokenAnimType}
         onComplete={() => setShowTokenAnimation(false)}
+        tokenImage={tokenAnimType === 'import' ? happyCamlyCoin : undefined}
       />
       <Navbar user={user} />
       <div className="flex">

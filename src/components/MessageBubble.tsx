@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";
 import { Smile } from "lucide-react";
+import TopOneBadge from "./TopOneBadge";
 
 const REACTIONS = ["❤️", "😂", "😢", "😍", "👍"];
 
@@ -111,12 +112,17 @@ const MessageBubble = ({ messageId, content, createdAt, isOwn, currentUserId, se
   return (
     <div className={`flex gap-2 mb-3 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
       {!isOwn && (
-        <Avatar className="h-7 w-7 mt-auto">
-          <AvatarImage src={senderAvatar || undefined} />
-          <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-            {senderName?.charAt(0).toUpperCase() || "U"}
-          </AvatarFallback>
-        </Avatar>
+        <div className="flex flex-col items-center gap-1">
+          <Avatar className="h-7 w-7">
+            <AvatarImage src={senderAvatar || undefined} />
+            <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+              {senderName?.charAt(0).toUpperCase() || "U"}
+            </AvatarFallback>
+          </Avatar>
+          {currentUserId && (
+            <TopOneBadge userId={currentUserId} size="sm" />
+          )}
+        </div>
       )}
       
       <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"} max-w-[70%]`}>

@@ -284,8 +284,9 @@ const Friends = () => {
       <TokenAnimation 
         show={showTokenAnimation}
         amount={tokenAnimAmount}
-        type="send"
+        type="transfer"
         onComplete={() => setShowTokenAnimation(false)}
+        tokenImage="/assets/happy-camly-coin.jpg"
       />
       {selectedFriend && (
         <TransferTokenDialog

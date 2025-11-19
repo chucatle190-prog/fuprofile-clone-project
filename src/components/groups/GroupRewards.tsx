@@ -31,7 +31,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [showTokenAnimation, setShowTokenAnimation] = useState(false);
   const [tokenAnimAmount, setTokenAnimAmount] = useState(0);
-  const [tokenAnimType, setTokenAnimType] = useState<'receive' | 'send'>('receive');
+  const [tokenAnimType, setTokenAnimType] = useState<'receive' | 'send' | 'import' | 'transfer'>('receive');
   const { toast } = useToast();
   const { account, connectWallet, isConnecting, addFUTokenToWallet } = useFUToken();
 
@@ -203,7 +203,13 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
   };
 
   const importTokenToMetaMask = async () => {
-    await addFUTokenToWallet();
+    const success = await addFUTokenToWallet();
+    if (success) {
+      // Show special animation with token image
+      setTokenAnimAmount(0);
+      setTokenAnimType('import');
+      setShowTokenAnimation(true);
+    }
   };
   const handleWithdraw = async () => {
     if (!walletAddress) {
@@ -312,6 +318,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
         amount={tokenAnimAmount}
         type={tokenAnimType}
         onComplete={() => setShowTokenAnimation(false)}
+        tokenImage={tokenAnimType === 'import' ? '/assets/happy-camly-coin.jpg' : undefined}
       />
       <Card>
       <CardHeader>

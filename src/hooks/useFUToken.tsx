@@ -168,7 +168,7 @@ export const useFUToken = () => {
         description: "Vui lòng cài đặt MetaMask extension",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
     try {
@@ -190,16 +190,14 @@ export const useFUToken = () => {
         },
       });
       
-      toast({
-        title: "Đã thêm Happy Camly (CAMLY)",
-        description: "Token CAMLY trên mạng BNB Chain đã được thêm vào MetaMask",
-      });
+      return true;
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
+      return false;
     }
   };
 
