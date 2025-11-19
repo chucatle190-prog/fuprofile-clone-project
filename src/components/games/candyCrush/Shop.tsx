@@ -5,6 +5,9 @@ import { SHOP_CONFIG, TREASURY_ADDRESS } from "@/config/gameConfig";
 import { useFUToken } from "@/hooks/useFUToken";
 import { useToast } from "@/hooks/use-toast";
 import { Wallet, Sparkles } from "lucide-react";
+import TokenAnimation from "@/components/TokenAnimation";
+import { useState } from "react";
+import happyCamlyCoin from "@/assets/happy-camly-coin.jpg";
 
 interface ShopProps {
   isOpen: boolean;
@@ -15,6 +18,14 @@ interface ShopProps {
 export default function Shop({ isOpen, onClose, onPurchase }: ShopProps) {
   const { account, fuBalance, connectWallet, addFUTokenToWallet, transferFU, isConnecting } = useFUToken();
   const { toast } = useToast();
+  const [showTokenAnimation, setShowTokenAnimation] = useState(false);
+
+  const handleImportToken = async () => {
+    const success = await addFUTokenToWallet();
+    if (success) {
+      setShowTokenAnimation(true);
+    }
+  };
 
   const handlePurchase = async (itemKey: string, price: number) => {
     if (!account) {
@@ -56,7 +67,15 @@ export default function Shop({ isOpen, onClose, onPurchase }: ShopProps) {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <>
+      <TokenAnimation 
+        show={showTokenAnimation}
+        amount={0}
+        type="import"
+        onComplete={() => setShowTokenAnimation(false)}
+        tokenImage={happyCamlyCoin}
+      />
+      <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
@@ -85,7 +104,7 @@ export default function Shop({ isOpen, onClose, onPurchase }: ShopProps) {
                   <span className="text-sm text-muted-foreground">Camly Balance:</span>
                   <span className="font-bold text-lg">{parseFloat(fuBalance).toFixed(2)} Camly</span>
                 </div>
-                <Button onClick={addFUTokenToWallet} variant="outline" size="sm" className="w-full">
+                <Button onClick={handleImportToken} variant="outline" size="sm" className="w-full">
                   Add Happy Camly to MetaMask
                 </Button>
               </div>
@@ -126,5 +145,6 @@ export default function Shop({ isOpen, onClose, onPurchase }: ShopProps) {
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

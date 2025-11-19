@@ -18,6 +18,7 @@ import FriendsList from "@/components/profile/FriendsList";
 import AboutSection from "@/components/profile/AboutSection";
 import WalletAddressSection from "@/components/profile/WalletAddressSection";
 import AvatarViewer from "@/components/AvatarViewer";
+import TopOneBadge from "@/components/TopOneBadge";
 
 interface Profile {
   id: string;
@@ -423,7 +424,10 @@ const Profile = () => {
                     )}
                   </div>
                   <div className="text-center md:text-left mb-4">
-                    <h1 className="text-3xl font-bold">{profile?.full_name || profile?.username}</h1>
+                    <div className="flex items-center gap-2 justify-center md:justify-start">
+                      <h1 className="text-3xl font-bold">{profile?.full_name || profile?.username}</h1>
+                      {profile && <TopOneBadge userId={profile.id} size="md" />}
+                    </div>
                     <p className="text-muted-foreground">@{profile?.username}</p>
                     {profile?.bio && <p className="mt-2 max-w-md">{profile.bio}</p>}
                   </div>

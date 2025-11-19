@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Medal, Award, TrendingUp, TrendingDown, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTopRankings } from "@/hooks/useTopRankings";
 import happyCamlyCoin from "@/assets/happy-camly-coin.jpg";
 
 interface LeaderboardEntry {
@@ -32,6 +33,7 @@ const Leaderboard = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { setTopHolder, setTopReceiver, setTopSender } = useTopRankings();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -105,6 +107,11 @@ const Leaderboard = () => {
           }
         }
         setHoldersLeaderboard(enrichedHolders);
+        
+        // Set top holder
+        if (enrichedHolders.length > 0) {
+          setTopHolder(enrichedHolders[0].user_id);
+        }
       }
 
       // Process receivers
@@ -135,6 +142,11 @@ const Leaderboard = () => {
           }
         }
         setReceiversLeaderboard(enrichedReceivers);
+        
+        // Set top receiver
+        if (enrichedReceivers.length > 0) {
+          setTopReceiver(enrichedReceivers[0].user_id);
+        }
       }
 
       // Process senders
@@ -165,6 +177,11 @@ const Leaderboard = () => {
           }
         }
         setSendersLeaderboard(enrichedSenders);
+        
+        // Set top sender
+        if (enrichedSenders.length > 0) {
+          setTopSender(enrichedSenders[0].user_id);
+        }
       }
     } catch (error: any) {
       toast({

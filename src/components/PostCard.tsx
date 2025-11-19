@@ -12,6 +12,7 @@ import { vi } from "date-fns/locale";
 import ReactionPicker from "./ReactionPicker";
 import SharePostDialog from "./SharePostDialog";
 import AvatarViewer from "./AvatarViewer";
+import TopOneBadge from "./TopOneBadge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -220,18 +221,21 @@ const PostCard = ({ post, currentUserId, onUpdate }: PostCardProps) => {
               </AvatarFallback>
             </Avatar>
             <div 
-              className="cursor-pointer hover:opacity-80 transition-opacity"
+              className="cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-2"
               onClick={() => navigate(`/profile/${post.profiles.username}`)}
             >
-              <p className="font-semibold text-foreground">
-                {post.profiles.full_name || post.profiles.username}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(post.created_at), {
-                  addSuffix: true,
-                  locale: vi,
-                })}
-              </p>
+              <div>
+                <p className="font-semibold text-foreground">
+                  {post.profiles.full_name || post.profiles.username}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(post.created_at), {
+                    addSuffix: true,
+                    locale: vi,
+                  })}
+                </p>
+              </div>
+              <TopOneBadge userId={post.user_id} size="sm" />
             </div>
           </div>
           <DropdownMenu>

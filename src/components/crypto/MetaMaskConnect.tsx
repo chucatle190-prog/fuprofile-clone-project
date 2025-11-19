@@ -13,7 +13,7 @@ const MetaMaskConnect = () => {
     isCorrectNetwork,
     connectWallet,
     disconnectWallet,
-    switchToBSCTestnet,
+    switchToBNBChain,
   } = useMetaMask();
 
   if (!account) {
@@ -67,7 +67,7 @@ const MetaMaskConnect = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={switchToBSCTestnet}
+                  onClick={switchToBNBChain}
                   className="h-8"
                 >
                   Chuyển sang BNB Chain

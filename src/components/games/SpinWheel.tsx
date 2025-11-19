@@ -113,14 +113,30 @@ const SpinWheel = ({ groupId }: SpinWheelProps) => {
       }
     }
 
-    const randomIndex = PRIZES.findIndex(p => p.id === selectedPrize.id);
+    const prizeIndex = PRIZES.findIndex(p => p.id === selectedPrize.id);
     const prize = selectedPrize;
 
-    // Calculate rotation
+    // Calculate rotation with proper normalization
     const segmentAngle = 360 / PRIZES.length;
-    const targetRotation = 360 * 5 + randomIndex * segmentAngle;
-
-    setRotation(targetRotation);
+    
+    // Normalize current rotation to 0-360 range
+    const normalizedRotation = rotation % 360;
+    
+    // Calculate target angle - aim for center of the segment
+    // The pointer is at the top, so we need to rotate to align the prize center with the top
+    const segmentCenter = prizeIndex * segmentAngle + segmentAngle / 2;
+    
+    // Add small random offset within segment for natural feel
+    const randomOffset = (Math.random() - 0.5) * (segmentAngle * 0.2);
+    
+    // Calculate target with 5 full rotations + precise landing
+    const targetAngle = segmentCenter + randomOffset;
+    const fullRotations = 360 * 5;
+    
+    // Calculate final rotation from normalized position
+    const finalRotation = normalizedRotation + fullRotations + (targetAngle - normalizedRotation);
+    
+    setRotation(finalRotation);
 
     setTimeout(async () => {
       setSpinning(false);
