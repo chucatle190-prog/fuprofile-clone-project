@@ -55,6 +55,53 @@ const Groups = () => {
     }
   }, [user]);
 
+  // Realtime subscriptions for groups
+  useEffect(() => {
+    if (!user) return;
+
+    const groupsChannel = supabase
+      .channel(`groups-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'groups'
+        },
+        (payload) => {
+          console.log('Group change detected:', payload);
+          fetchGroups();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Groups channel status:', status);
+      });
+
+    const membersChannel = supabase
+      .channel(`group-members-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'group_members',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Group member change detected:', payload);
+          fetchGroups();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Group members channel status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(groupsChannel);
+      supabase.removeChannel(membersChannel);
+    };
+  }, [user]);
+
   const fetchGroups = async () => {
     if (!user) return;
 

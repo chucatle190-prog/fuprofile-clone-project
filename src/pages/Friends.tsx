@@ -71,6 +71,32 @@ const Friends = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Realtime subscriptions for friendships
+  useEffect(() => {
+    if (!user) return;
+
+    const friendshipsChannel = supabase
+      .channel(`friendships-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friendships',
+          filter: `user_id=eq.${user.id},friend_id=eq.${user.id}`
+        },
+        () => {
+          console.log('Friendship change detected');
+          fetchFriendships(user.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(friendshipsChannel);
+    };
+  }, [user]);
+
   const fetchFriendships = async (userId: string) => {
     // Get friend requests (pending, sent TO me)
     const { data: requests } = await supabase
