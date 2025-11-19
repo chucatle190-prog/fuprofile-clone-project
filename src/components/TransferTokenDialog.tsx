@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Coins, Send } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { useFUToken } from "@/hooks/useFUToken";
 
 interface TransferTokenDialogProps {
   open: boolean;
@@ -15,6 +15,7 @@ interface TransferTokenDialogProps {
   receiverId: string;
   receiverName: string;
   receiverAvatar: string | null;
+  receiverWalletAddress: string | null;
   currentBalance: number;
   onTransferSuccess: (amount: number) => void;
 }
@@ -25,80 +26,50 @@ export default function TransferTokenDialog({
   receiverId,
   receiverName,
   receiverAvatar,
+  receiverWalletAddress,
   currentBalance,
   onTransferSuccess,
 }: TransferTokenDialogProps) {
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+  const { account, connectWallet, transferFU } = useFUToken();
 
   const handleTransfer = async () => {
     const transferAmount = parseFloat(amount);
 
-    if (!transferAmount || transferAmount <= 0) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng nhập số lượng hợp lệ",
-        variant: "destructive",
-      });
+    if (isNaN(transferAmount) || transferAmount <= 0) {
+      toast.error("Vui lòng nhập số lượng hợp lệ");
       return;
     }
 
-    if (transferAmount > currentBalance) {
-      toast({
-        title: "Số dư không đủ",
-        description: `Bạn chỉ có ${currentBalance} Happy Camly`,
-        variant: "destructive",
-      });
+    if (!receiverWalletAddress) {
+      toast.error("Người nhận chưa kết nối ví MetaMask");
+      return;
+    }
+
+    if (!account) {
+      toast.error("Vui lòng kết nối ví MetaMask");
+      await connectWallet();
       return;
     }
 
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log(`Transferring ${transferAmount} CAMLY to ${receiverWalletAddress}`);
       
-      if (!session?.access_token) {
-        toast({
-          title: "Lỗi xác thực",
-          description: "Vui lòng đăng nhập lại",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('transfer-tokens', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: {
-          receiver_id: receiverId,
-          amount: transferAmount,
-          message: message || null,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        toast({
-          title: "Chuyển thành công! 🎉",
-          description: data.message,
-        });
-
-        onTransferSuccess(transferAmount);
-        onClose();
-        setAmount("");
-        setMessage("");
-      } else {
-        throw new Error(data.error || 'Có lỗi xảy ra');
-      }
+      const txHash = await transferFU(receiverWalletAddress, amount);
+      
+      toast.success(`Đã chuyển ${transferAmount} Camly cho ${receiverName}! TX: ${txHash.slice(0, 10)}...`);
+      
+      setAmount("");
+      setMessage("");
+      onClose();
+      onTransferSuccess(transferAmount);
     } catch (error: any) {
-      toast({
-        title: "Lỗi chuyển token",
-        description: error.message || "Không thể chuyển Happy Camly",
-        variant: "destructive",
-      });
+      console.error("Transfer error:", error);
+      const errorMessage = error?.message || "Không thể chuyển token";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -113,7 +84,7 @@ export default function TransferTokenDialog({
             Chuyển Happy Camly
           </DialogTitle>
           <DialogDescription>
-            Gửi Happy Camly cho bạn bè của bạn
+            Gửi Happy Camly on-chain qua MetaMask
           </DialogDescription>
         </DialogHeader>
 
@@ -126,21 +97,27 @@ export default function TransferTokenDialog({
             </Avatar>
             <div className="flex-1">
               <p className="font-semibold">{receiverName}</p>
-              <p className="text-sm text-muted-foreground">Người nhận</p>
+              <p className="text-sm text-muted-foreground">
+                {receiverWalletAddress ? `${receiverWalletAddress.slice(0, 6)}...${receiverWalletAddress.slice(-4)}` : "Chưa kết nối ví"}
+              </p>
             </div>
           </div>
 
-          {/* Current Balance */}
-          <div className="bg-accent/10 p-3 rounded-lg border border-accent/20">
-            <p className="text-sm text-muted-foreground mb-1">Số dư hiện tại</p>
-            <div className="flex items-center gap-2">
-              <Coins className="h-5 w-5 text-accent" />
-              <span className="text-2xl font-bold text-accent">
-                {currentBalance.toLocaleString()}
-              </span>
-              <span className="text-sm text-muted-foreground">Happy Camly</span>
+          {/* Wallet Status */}
+          {!account && (
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 text-sm">
+              <p className="text-yellow-600 dark:text-yellow-400">
+                Bạn cần kết nối ví MetaMask để chuyển token on-chain
+              </p>
+              <Button
+                onClick={connectWallet}
+                className="mt-2 w-full"
+                variant="outline"
+              >
+                Kết nối MetaMask
+              </Button>
             </div>
-          </div>
+          )}
 
           {/* Amount Input */}
           <div className="space-y-2">
@@ -151,11 +128,11 @@ export default function TransferTokenDialog({
               placeholder="0"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              min="0"
-              step="0.01"
+              className="text-lg"
             />
             <div className="flex gap-2">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setAmount((currentBalance * 0.25).toString())}
@@ -163,6 +140,7 @@ export default function TransferTokenDialog({
                 25%
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setAmount((currentBalance * 0.5).toString())}
@@ -170,6 +148,7 @@ export default function TransferTokenDialog({
                 50%
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setAmount((currentBalance * 0.75).toString())}
@@ -177,6 +156,7 @@ export default function TransferTokenDialog({
                 75%
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setAmount(currentBalance.toString())}
@@ -186,43 +166,39 @@ export default function TransferTokenDialog({
             </div>
           </div>
 
-          {/* Message Input */}
+          {/* Message */}
           <div className="space-y-2">
             <Label htmlFor="message">Tin nhắn (tùy chọn)</Label>
             <Textarea
               id="message"
-              placeholder="Thêm lời nhắn cho bạn..."
+              placeholder="Thêm lời nhắn..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
-              maxLength={200}
             />
-            <p className="text-xs text-muted-foreground text-right">
-              {message.length}/200
-            </p>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 pt-2">
             <Button
               variant="outline"
               onClick={onClose}
-              disabled={loading}
               className="flex-1"
+              disabled={loading}
             >
               Hủy
             </Button>
             <Button
               onClick={handleTransfer}
-              disabled={loading || !amount}
               className="flex-1 gap-2"
+              disabled={loading || !amount || !receiverWalletAddress || !account}
             >
               {loading ? (
-                "Đang gửi..."
+                "Đang chuyển..."
               ) : (
                 <>
                   <Send className="h-4 w-4" />
-                  Gửi Token
+                  Chuyển Token
                 </>
               )}
             </Button>
