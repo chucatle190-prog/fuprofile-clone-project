@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { toast } from "sonner";
-import { Bitcoin, Wallet, Ticket } from "lucide-react";
+import { Bitcoin, Wallet, Ticket, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMetaMask } from "@/hooks/useMetaMask";
+import { Confetti } from "./Confetti";
 
 const PRIZES = [
   { id: 1, value: 5000, color: "#FFD700", weight: 25, label: "5K CAMLY" },
@@ -29,6 +30,8 @@ const SpinWheel = ({ groupId }: SpinWheelProps) => {
   const [result, setResult] = useState<number | null>(null);
   const [remainingSpins, setRemainingSpins] = useState<number>(5);
   const [loading, setLoading] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [isJackpot, setIsJackpot] = useState(false);
 
   useEffect(() => {
     if (user && groupId) {
@@ -124,6 +127,18 @@ const SpinWheel = ({ groupId }: SpinWheelProps) => {
       setSpinning(false);
       setResult(prize.value);
 
+      // Check if jackpot
+      const isJackpotWin = prize.value === 1000000;
+      if (isJackpotWin) {
+        setIsJackpot(true);
+        setShowConfetti(true);
+        
+        // Play celebration sound
+        const audio = new Audio();
+        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBzKM0fPTgjMGHm7A7+OZRA0PVqzn77BdGApKoOTxwGghByyJ0vPYiDUGF2S37OmkUxQKQ5zj8r1rIgcxitL03IoyCx5qwPDmnEYPD1Opw';
+        audio.play().catch(() => console.log('Audio play failed'));
+      }
+
       // Save score to database
       const { error: scoreError } = await supabase.from("game_scores").insert({
         user_id: user.id,
@@ -169,15 +184,25 @@ const SpinWheel = ({ groupId }: SpinWheelProps) => {
           group_id: groupId,
           user_id: user.id,
           type: "game_score",
-          content: `🎉 đã trúng ${prize.value} BTC trong Vòng Quay!`,
+          content: isJackpotWin 
+            ? `🎰💎 TRÚNG ĐẶC BIỆT ${prize.value.toLocaleString()} CAMLY! 🎉✨`
+            : `🎉 đã trúng ${prize.value.toLocaleString()} CAMLY trong Vòng Quay!`,
         });
 
       if (notifError) {
         console.error("Error creating notification:", notifError);
       }
 
-      // If connected to MetaMask, show claim option
-      if (account) {
+      // Show special toast for jackpot
+      if (isJackpotWin) {
+        toast.success(
+          `🎰💎 CHÚC MỪNG! BẠN TRÚNG ĐẶC BIỆT 1 TRIỆU CAMLY! 🎉✨💰`,
+          { 
+            duration: 8000,
+            className: 'text-lg font-bold'
+          }
+        );
+      } else if (account) {
         toast.success(
           `🎉 Chúc mừng! Bạn trúng ${prize.label}! Phần thưởng sẽ được gửi đến ví ${account.slice(0, 6)}...${account.slice(-4)}`,
           { duration: 5000 }
@@ -199,113 +224,165 @@ const SpinWheel = ({ groupId }: SpinWheelProps) => {
   }
 
   return (
-    <Card className="p-6">
-      <div className="text-center mb-6">
-        <h3 className="text-2xl font-bold flex items-center justify-center gap-2 mb-2">
-          <Bitcoin className="h-6 w-6 text-yellow-500" />
-          Vòng Quay Trúng Thưởng
-        </h3>
-        <p className="text-muted-foreground">Quay để nhận Bitcoin!</p>
+    <>
+      <Confetti active={showConfetti} onComplete={() => setShowConfetti(false)} />
+      
+      <Card className="p-6 relative overflow-hidden">
+        {isJackpot && (
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 via-pink-500/20 to-purple-600/20 animate-pulse pointer-events-none" />
+        )}
+        
+        <div className="text-center mb-6 relative z-10">
+          <h3 className="text-2xl font-bold flex items-center justify-center gap-2 mb-2">
+            <Sparkles className="h-6 w-6 text-yellow-500" />
+            Vòng Quay Trúng Thưởng
+            <Sparkles className="h-6 w-6 text-yellow-500" />
+          </h3>
+          <p className="text-muted-foreground">Quay để nhận Happy Camly Coin!</p>
 
-        <div className="flex items-center justify-center gap-4 mt-4">
-          <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg">
-            <Ticket className="h-5 w-5 text-primary" />
-            <span className="font-bold">{remainingSpins} lượt còn lại</span>
+          <div className="flex items-center justify-center gap-4 mt-4">
+            <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg">
+              <Ticket className="h-5 w-5 text-primary" />
+              <span className="font-bold">{remainingSpins} lượt còn lại</span>
+            </div>
+
+            {!account ? (
+              <Button onClick={connectWallet} variant="outline" size="sm">
+                <Wallet className="h-4 w-4 mr-2" />
+                Kết nối MetaMask
+              </Button>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                <Wallet className="h-4 w-4 inline mr-1" />
+                {account.slice(0, 6)}...{account.slice(-4)}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center gap-6 relative z-10">
+          {/* Wheel */}
+          <div className={`relative w-80 h-80 ${isJackpot ? 'animate-pulse' : ''}`}>
+            <svg
+              className={`w-full h-full drop-shadow-2xl ${spinning ? 'filter blur-[1px]' : ''}`}
+              style={{
+                transform: `rotate(${rotation}deg)`,
+                transition: spinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
+              }}
+              viewBox="0 0 200 200"
+            >
+              {PRIZES.map((prize, index) => {
+                const angle = (360 / PRIZES.length) * index;
+                const nextAngle = (360 / PRIZES.length) * (index + 1);
+                const midAngle = (angle + nextAngle) / 2;
+
+                // Calculate path for each segment
+                const startX = 100 + 90 * Math.cos((angle * Math.PI) / 180);
+                const startY = 100 + 90 * Math.sin((angle * Math.PI) / 180);
+                const endX = 100 + 90 * Math.cos((nextAngle * Math.PI) / 180);
+                const endY = 100 + 90 * Math.sin((nextAngle * Math.PI) / 180);
+
+                // Text position
+                const textX = 100 + 60 * Math.cos((midAngle * Math.PI) / 180);
+                const textY = 100 + 60 * Math.sin((midAngle * Math.PI) / 180);
+
+                return (
+                  <g key={prize.id}>
+                    <path
+                      d={`M 100 100 L ${startX} ${startY} A 90 90 0 0 1 ${endX} ${endY} Z`}
+                      fill={prize.color}
+                      stroke="white"
+                      strokeWidth="3"
+                      className="drop-shadow-md"
+                    />
+                    <text
+                      x={textX}
+                      y={textY}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="white"
+                      fontWeight="bold"
+                      fontSize="11"
+                      stroke="#000"
+                      strokeWidth="0.5"
+                      transform={`rotate(${midAngle + 90}, ${textX}, ${textY})`}
+                    >
+                      {prize.label}
+                    </text>
+                  </g>
+                );
+              })}
+              {/* Center circle with gradient */}
+              <defs>
+                <radialGradient id="centerGradient">
+                  <stop offset="0%" stopColor="#FFD700" />
+                  <stop offset="100%" stopColor="#FFA500" />
+                </radialGradient>
+              </defs>
+              <circle cx="100" cy="100" r="25" fill="url(#centerGradient)" stroke="#fff" strokeWidth="3" />
+              <text
+                x="100"
+                y="100"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="white"
+                fontWeight="bold"
+                fontSize="14"
+                stroke="#000"
+                strokeWidth="0.5"
+              >
+                SPIN
+              </text>
+            </svg>
+
+            {/* Pointer */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-3 z-20">
+              <div className="relative">
+                <div className="w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[35px] border-t-red-600 drop-shadow-lg" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-yellow-400 rounded-full border-2 border-white" />
+              </div>
+            </div>
           </div>
 
-          {!account ? (
-            <Button onClick={connectWallet} variant="outline" size="sm">
-              <Wallet className="h-4 w-4 mr-2" />
-              Kết nối MetaMask
-            </Button>
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              <Wallet className="h-4 w-4 inline mr-1" />
-              {account.slice(0, 6)}...{account.slice(-4)}
+          {/* Result */}
+          {result !== null && (
+            <div className={`text-center p-6 rounded-xl border-4 ${
+              result === 1000000 
+                ? 'bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600 border-yellow-300 animate-pulse' 
+                : 'bg-primary/10 border-primary'
+            }`}>
+              <p className={`text-2xl font-bold ${
+                result === 1000000 ? 'text-white drop-shadow-lg' : 'text-primary'
+              }`}>
+                {result === 1000000 ? (
+                  <>
+                    🎰💎 TRÚNG ĐẶC BIỆT! 💎🎰
+                    <br />
+                    <span className="text-4xl">1,000,000 CAMLY!</span>
+                    <br />
+                    🎉✨🎊✨🎉
+                  </>
+                ) : (
+                  `Bạn đã trúng: ${result.toLocaleString()} CAMLY!`
+                )}
+              </p>
             </div>
           )}
-        </div>
-      </div>
 
-      <div className="flex flex-col items-center gap-6">
-        {/* Wheel */}
-        <div className="relative w-72 h-72">
-          <svg
-            className="w-full h-full"
-            style={{
-              transform: `rotate(${rotation}deg)`,
-              transition: spinning ? 'transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)' : 'none',
-            }}
-            viewBox="0 0 200 200"
+          {/* Spin Button */}
+          <Button
+            onClick={spinWheel}
+            disabled={spinning || remainingSpins === 0}
+            size="lg"
+            className={`w-full max-w-xs text-lg font-bold ${
+              spinning ? 'animate-pulse' : ''
+            }`}
           >
-            {PRIZES.map((prize, index) => {
-              const angle = (360 / PRIZES.length) * index;
-              const nextAngle = (360 / PRIZES.length) * (index + 1);
-              const midAngle = (angle + nextAngle) / 2;
-
-              // Calculate path for each segment
-              const startX = 100 + 90 * Math.cos((angle * Math.PI) / 180);
-              const startY = 100 + 90 * Math.sin((angle * Math.PI) / 180);
-              const endX = 100 + 90 * Math.cos((nextAngle * Math.PI) / 180);
-              const endY = 100 + 90 * Math.sin((nextAngle * Math.PI) / 180);
-
-              // Text position
-              const textX = 100 + 60 * Math.cos((midAngle * Math.PI) / 180);
-              const textY = 100 + 60 * Math.sin((midAngle * Math.PI) / 180);
-
-              return (
-                <g key={prize.id}>
-                  <path
-                    d={`M 100 100 L ${startX} ${startY} A 90 90 0 0 1 ${endX} ${endY} Z`}
-                    fill={prize.color}
-                    stroke="white"
-                    strokeWidth="2"
-                  />
-                  <text
-                    x={textX}
-                    y={textY}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill="white"
-                    fontWeight="bold"
-                    fontSize="12"
-                    transform={`rotate(${midAngle + 90}, ${textX}, ${textY})`}
-                  >
-                    {prize.label}
-                  </text>
-                </g>
-              );
-            })}
-            {/* Center circle */}
-            <circle cx="100" cy="100" r="20" fill="white" stroke="#333" strokeWidth="2" />
-          </svg>
-
-          {/* Pointer */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2">
-            <div className="w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[25px] border-t-red-500" />
-          </div>
+            {spinning ? "🎰 Đang quay..." : remainingSpins === 0 ? "Hết lượt quay" : "🎯 Quay ngay!"}
+          </Button>
         </div>
-
-        {/* Result */}
-        {result !== null && (
-          <div className="text-center p-4 bg-primary/10 rounded-lg border-2 border-primary">
-            <p className="text-lg font-bold text-primary">
-              Bạn đã trúng: {result} BTC!
-            </p>
-          </div>
-        )}
-
-        {/* Spin Button */}
-        <Button
-          onClick={spinWheel}
-          disabled={spinning}
-          size="lg"
-          className="w-full max-w-xs"
-        >
-          {spinning ? "Đang quay..." : "Quay ngay!"}
-        </Button>
-      </div>
-    </Card>
+      </Card>
+    </>
   );
 };
 
