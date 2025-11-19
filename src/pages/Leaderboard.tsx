@@ -9,12 +9,14 @@ import MobileNav from "@/components/MobileNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Medal, Award, Coins } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Trophy, Medal, Award, TrendingUp, TrendingDown, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import happyCamlyCoin from "@/assets/happy-camly-coin.jpg";
 
 interface LeaderboardEntry {
   user_id: string;
-  camly_balance: number;
+  amount: number;
   profiles: {
     username: string;
     full_name: string | null;
@@ -24,8 +26,9 @@ interface LeaderboardEntry {
 
 const Leaderboard = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [userRank, setUserRank] = useState<number | null>(null);
+  const [holdersLeaderboard, setHoldersLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [receiversLeaderboard, setReceiversLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [sendersLeaderboard, setSendersLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -52,24 +55,41 @@ const Leaderboard = () => {
 
   useEffect(() => {
     if (user) {
-      fetchLeaderboard();
+      fetchLeaderboards();
     }
   }, [user]);
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboards = async () => {
     try {
-      const { data: walletsData, error } = await supabase
+      // Fetch holders (people with most tokens)
+      const { data: holdersData, error: holdersError } = await supabase
         .from("user_wallets")
         .select("user_id, camly_balance")
         .order("camly_balance", { ascending: false })
-        .limit(100);
+        .limit(50);
 
-      if (error) throw error;
+      if (holdersError) throw holdersError;
 
-      if (walletsData) {
-        const enrichedData: LeaderboardEntry[] = [];
-        
-        for (const wallet of walletsData) {
+      // Fetch receivers (people who received most tokens)
+      const { data: receiversData, error: receiversError } = await supabase
+        .from("token_transfers")
+        .select("receiver_id")
+        .eq("status", "completed");
+
+      if (receiversError) throw receiversError;
+
+      // Fetch senders (people who sent most tokens)
+      const { data: sendersData, error: sendersError } = await supabase
+        .from("token_transfers")
+        .select("sender_id, amount")
+        .eq("status", "completed");
+
+      if (sendersError) throw sendersError;
+
+      // Process holders
+      if (holdersData) {
+        const enrichedHolders: LeaderboardEntry[] = [];
+        for (const wallet of holdersData) {
           const { data: profile } = await supabase
             .from("profiles")
             .select("username, full_name, avatar_url")
@@ -77,20 +97,74 @@ const Leaderboard = () => {
             .single();
 
           if (profile) {
-            enrichedData.push({
-              ...wallet,
+            enrichedHolders.push({
+              user_id: wallet.user_id,
+              amount: wallet.camly_balance,
               profiles: profile,
             });
           }
         }
+        setHoldersLeaderboard(enrichedHolders);
+      }
 
-        setLeaderboard(enrichedData);
+      // Process receivers
+      if (receiversData) {
+        const receiverCounts = receiversData.reduce((acc, transfer) => {
+          acc[transfer.receiver_id] = (acc[transfer.receiver_id] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
 
-        // Find user's rank
-        const userIndex = enrichedData.findIndex(entry => entry.user_id === user?.id);
-        if (userIndex !== -1) {
-          setUserRank(userIndex + 1);
+        const sortedReceivers = Object.entries(receiverCounts)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 50);
+
+        const enrichedReceivers: LeaderboardEntry[] = [];
+        for (const [userId, count] of sortedReceivers) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("username, full_name, avatar_url")
+            .eq("id", userId)
+            .single();
+
+          if (profile) {
+            enrichedReceivers.push({
+              user_id: userId,
+              amount: count,
+              profiles: profile,
+            });
+          }
         }
+        setReceiversLeaderboard(enrichedReceivers);
+      }
+
+      // Process senders
+      if (sendersData) {
+        const senderTotals = sendersData.reduce((acc, transfer) => {
+          acc[transfer.sender_id] = (acc[transfer.sender_id] || 0) + Number(transfer.amount);
+          return acc;
+        }, {} as Record<string, number>);
+
+        const sortedSenders = Object.entries(senderTotals)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 50);
+
+        const enrichedSenders: LeaderboardEntry[] = [];
+        for (const [userId, total] of sortedSenders) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("username, full_name, avatar_url")
+            .eq("id", userId)
+            .single();
+
+          if (profile) {
+            enrichedSenders.push({
+              user_id: userId,
+              amount: total,
+              profiles: profile,
+            });
+          }
+        }
+        setSendersLeaderboard(enrichedSenders);
       }
     } catch (error: any) {
       toast({
@@ -119,135 +193,210 @@ const Leaderboard = () => {
   const getRankBadge = (rank: number) => {
     switch (rank) {
       case 1:
-        return <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600">👑 Vua F.U</Badge>;
+        return <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600">👑 Vua Camly</Badge>;
       case 2:
         return <Badge className="bg-gradient-to-r from-gray-300 to-gray-500">🥈 Á Vua</Badge>;
       case 3:
-        return <Badge className="bg-gradient-to-r from-orange-400 to-orange-600">🥉 Hạng Ba</Badge>;
+        return <Badge className="bg-gradient-to-r from-orange-400 to-orange-600">🥉 Á Quân</Badge>;
       default:
         return null;
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-subtle">
-      <Navbar user={user} />
-      <div className="flex">
-        <LeftSidebar />
-        <main className="flex-1 container max-w-4xl mx-auto px-4 py-6 mb-16 md:mb-0">
-          <Card className="shadow-medium">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <Trophy className="h-6 w-6 text-yellow-500" />
-                Bảng Xếp Hạng F.U Token
-              </CardTitle>
-              {userRank && (
-                <p className="text-sm text-muted-foreground">
-                  Hạng của bạn: <span className="font-bold text-foreground">#{userRank}</span>
+  const renderLeaderboardList = (data: LeaderboardEntry[], label: string) => {
+    if (loading) {
+      return <div className="text-center py-8 text-muted-foreground">Đang tải...</div>;
+    }
+
+    if (data.length === 0) {
+      return <div className="text-center py-8 text-muted-foreground">Chưa có dữ liệu</div>;
+    }
+
+    return (
+      <div className="space-y-2">
+        {data.map((entry, index) => (
+          <div
+            key={entry.user_id}
+            className={`flex items-center gap-4 p-4 rounded-lg transition-all hover:scale-[1.02] ${
+              index < 3
+                ? "bg-gradient-to-r from-primary/10 to-primary/5 border-2 border-primary/30"
+                : "bg-card"
+            } ${entry.user_id === user?.id ? "ring-2 ring-primary" : ""}`}
+          >
+            <div className="flex items-center justify-center w-16">
+              {getRankIcon(index + 1)}
+            </div>
+
+            <Avatar className="h-12 w-12">
+              <AvatarImage src={entry.profiles.avatar_url || undefined} />
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {entry.profiles.username[0]?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-foreground truncate">
+                  {entry.profiles.full_name || entry.profiles.username}
                 </p>
-              )}
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">Đang tải...</p>
-                </div>
-              ) : leaderboard.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">Chưa có dữ liệu xếp hạng</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {leaderboard.map((entry, index) => {
-                    const rank = index + 1;
-                    const isCurrentUser = entry.user_id === user?.id;
-                    
-                    return (
-                      <div
-                        key={entry.user_id}
-                        className={`flex items-center gap-4 p-4 rounded-lg transition-all ${
-                          isCurrentUser
-                            ? "bg-primary/10 border-2 border-primary"
-                            : rank <= 3
-                            ? "bg-gradient-to-r from-yellow-50/50 to-transparent dark:from-yellow-900/20"
-                            : "bg-secondary/30 hover:bg-secondary/50"
-                        }`}
-                      >
-                        {/* Rank */}
-                        <div className="flex-shrink-0 w-16 flex justify-center">
-                          {getRankIcon(rank)}
-                        </div>
-
-                        {/* Avatar */}
-                        <Avatar className={`${rank <= 3 ? "h-14 w-14 ring-2 ring-yellow-500" : "h-12 w-12"}`}>
-                          <AvatarImage src={entry.profiles.avatar_url || undefined} />
-                          <AvatarFallback>
-                            {entry.profiles.username?.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-
-                        {/* User Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className={`font-semibold truncate ${rank <= 3 ? "text-lg" : ""}`}>
-                              {entry.profiles.full_name || entry.profiles.username}
-                            </p>
-                            {getRankBadge(rank)}
-                            {isCurrentUser && (
-                              <Badge variant="outline" className="bg-primary/20">Bạn</Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">@{entry.profiles.username}</p>
-                        </div>
-
-                        {/* Balance */}
-                        <div className="flex-shrink-0 text-right">
-                          <div className="flex items-center gap-2 text-accent font-bold text-xl">
-                            <Coins className="h-5 w-5" />
-                            {Number(entry.camly_balance).toLocaleString()}
-                          </div>
-                          <p className="text-xs text-muted-foreground">F.U Token</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Rewards Info */}
-          <Card className="mt-6 shadow-medium">
-            <CardHeader>
-              <CardTitle className="text-lg">🎁 Phần Thưởng Đặc Biệt</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-yellow-50 to-transparent dark:from-yellow-900/20 rounded-lg">
-                <Trophy className="h-8 w-8 text-yellow-500 flex-shrink-0" />
-                <div>
-                  <p className="font-semibold">Top 1: Vua F.U Token</p>
-                  <p className="text-sm text-muted-foreground">Nhận badge đặc biệt và 1000 F.U Token thưởng</p>
-                </div>
+                {getRankBadge(index + 1)}
+                {entry.user_id === user?.id && (
+                  <Badge variant="outline" className="ml-auto">Bạn</Badge>
+                )}
               </div>
-              <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
-                <Medal className="h-7 w-7 text-gray-400 flex-shrink-0" />
-                <div>
-                  <p className="font-semibold">Top 2-3</p>
-                  <p className="text-sm text-muted-foreground">Nhận 500 F.U Token thưởng</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
-                <Award className="h-6 w-6 text-orange-600 flex-shrink-0" />
-                <div>
-                  <p className="font-semibold">Top 4-10</p>
-                  <p className="text-sm text-muted-foreground">Nhận 200 F.U Token thưởng</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-        <RightSidebar />
+              <p className="text-sm text-muted-foreground">@{entry.profiles.username}</p>
+            </div>
+
+            <div className="text-right">
+              <p className="text-2xl font-bold text-primary">
+                {entry.amount.toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground">{label}</p>
+            </div>
+          </div>
+        ))}
       </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar user={user} />
+      
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          <div className="hidden lg:block">
+            <LeftSidebar />
+          </div>
+
+          <main className="flex-1 max-w-4xl mx-auto">
+            <Card className="mb-6 bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+              <CardHeader className="text-center">
+                <div className="flex justify-center mb-4">
+                  <img 
+                    src={happyCamlyCoin} 
+                    alt="Happy Camly Coin" 
+                    className="w-32 h-32 object-contain rounded-full"
+                  />
+                </div>
+                <CardTitle className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                  🏆 Bảng Xếp Hạng Happy Camly
+                </CardTitle>
+                <p className="text-muted-foreground mt-2">
+                  Top người dùng xuất sắc nhất trong cộng đồng Happy Camly
+                </p>
+              </CardHeader>
+            </Card>
+
+            <Tabs defaultValue="holders" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsTrigger value="holders" className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4" />
+                  Giữ Nhiều Nhất
+                </TabsTrigger>
+                <TabsTrigger value="receivers" className="flex items-center gap-2">
+                  <TrendingDown className="h-4 w-4" />
+                  Nhận Nhiều Nhất
+                </TabsTrigger>
+                <TabsTrigger value="senders" className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Chuyển Nhiều Nhất
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="holders">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Wallet className="h-5 w-5 text-primary" />
+                      Top Người Giữ Token
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Những người sở hữu nhiều Happy Camly Coin nhất
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    {renderLeaderboardList(holdersLeaderboard, "Camly")}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="receivers">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingDown className="h-5 w-5 text-primary" />
+                      Top Người Nhận Token
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Những người nhận nhiều giao dịch Camly nhất
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    {renderLeaderboardList(receiversLeaderboard, "giao dịch")}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="senders">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                      Top Người Chuyển Token
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Những người đã chuyển nhiều Camly nhất cho người khác
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    {renderLeaderboardList(sendersLeaderboard, "Camly")}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+
+            <Card className="mt-6 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-primary/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="h-6 w-6 text-yellow-500" />
+                  Phần Thưởng Đặc Biệt
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Trophy className="h-8 w-8 text-yellow-500" />
+                    <div>
+                      <p className="font-bold text-lg">Top 1 - Vua Camly</p>
+                      <p className="text-sm text-muted-foreground">Nhận 1000 Camly thưởng + Badge đặc biệt</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Medal className="h-7 w-7 text-gray-400" />
+                    <div>
+                      <p className="font-bold">Top 2 - Á Vua</p>
+                      <p className="text-sm text-muted-foreground">Nhận 500 Camly thưởng</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Award className="h-6 w-6 text-orange-600" />
+                    <div>
+                      <p className="font-bold">Top 3 - Á Quân</p>
+                      <p className="text-sm text-muted-foreground">Nhận 250 Camly thưởng</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </main>
+
+          <div className="hidden lg:block">
+            <RightSidebar />
+          </div>
+        </div>
+      </div>
+
       <MobileNav />
     </div>
   );
