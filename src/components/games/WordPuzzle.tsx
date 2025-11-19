@@ -58,8 +58,9 @@ const WordPuzzle = ({ groupId }: WordPuzzleProps) => {
     if (userAnswer === correctAnswer) {
       setCompleted((prev) => ({ ...prev, [id]: true }));
       
-      // Calculate score (points based on puzzle difficulty/position)
-      const score = id * 10;
+      // Scale rewards: Puzzle 1 = 5000, Puzzle 3 = 25000
+      const baseReward = 5000;
+      const score = baseReward + ((id - 1) * 10000);
 
       if (user) {
         // Save score to database
@@ -89,7 +90,7 @@ const WordPuzzle = ({ groupId }: WordPuzzleProps) => {
         }
       }
 
-      toast.success("🎉 Chính xác! Bạn đã ghép đúng từ!");
+      toast.success(`🎉 Chính xác! Bạn nhận ${score.toLocaleString()} CAMLY!`);
     } else {
       toast.error("❌ Chưa đúng, thử lại nhé!");
     }

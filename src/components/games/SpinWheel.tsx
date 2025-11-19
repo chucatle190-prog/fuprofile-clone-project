@@ -8,11 +8,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMetaMask } from "@/hooks/useMetaMask";
 
 const PRIZES = [
-  { id: 1, value: 1, color: "#FFD700", label: "1 BTC" },
-  { id: 2, value: 5, color: "#FF6B6B", label: "5 BTC" },
-  { id: 3, value: 10, color: "#4ECDC4", label: "10 BTC" },
-  { id: 4, value: 50, color: "#95E1D3", label: "50 BTC" },
-  { id: 5, value: 100, color: "#F38181", label: "100 BTC 🎉" },
+  { id: 1, value: 5000, color: "#FFD700", weight: 25, label: "5K CAMLY" },
+  { id: 2, value: 20000, color: "#FF6B6B", weight: 20, label: "20K CAMLY" },
+  { id: 3, value: 50000, color: "#4ECDC4", weight: 18, label: "50K CAMLY" },
+  { id: 4, value: 70000, color: "#95E1D3", weight: 15, label: "70K CAMLY" },
+  { id: 5, value: 100000, color: "#F38181", weight: 12, label: "100K CAMLY" },
+  { id: 6, value: 200000, color: "#A8E6CF", weight: 9.9, label: "200K CAMLY 🎉" },
+  { id: 7, value: 1000000, color: "#FF1493", weight: 0.1, label: "1M CAMLY 💎✨" },
 ];
 
 interface SpinWheelProps {
@@ -96,11 +98,23 @@ const SpinWheel = ({ groupId }: SpinWheelProps) => {
     setSpinning(true);
     setResult(null);
 
-    // Random prize
-    const randomIndex = Math.floor(Math.random() * PRIZES.length);
-    const prize = PRIZES[randomIndex];
+    // Weighted random selection
+    const totalWeight = PRIZES.reduce((sum, p) => sum + p.weight, 0);
+    let random = Math.random() * totalWeight;
+    let selectedPrize = PRIZES[0];
+    
+    for (const prize of PRIZES) {
+      random -= prize.weight;
+      if (random <= 0) {
+        selectedPrize = prize;
+        break;
+      }
+    }
 
-    // Calculate rotation (72 degrees per segment for 5 segments)
+    const randomIndex = PRIZES.findIndex(p => p.id === selectedPrize.id);
+    const prize = selectedPrize;
+
+    // Calculate rotation
     const segmentAngle = 360 / PRIZES.length;
     const targetRotation = 360 * 5 + randomIndex * segmentAngle;
 

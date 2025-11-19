@@ -174,7 +174,10 @@ export default function MemoryMatch({ groupId }: MemoryMatchProps) {
         .eq("game_type", "memory_match")
         .single();
 
-      const points = 500;
+      // Scale rewards: Level 1 = 1000, Level 5 = 50000
+      const baseReward = 1000;
+      const maxReward = 50000;
+      const points = Math.floor(baseReward + ((currentLevel - 1) / (LEVELS.length - 1)) * (maxReward - baseReward));
 
       if (existingScore) {
         await supabase
@@ -197,7 +200,7 @@ export default function MemoryMatch({ groupId }: MemoryMatchProps) {
         user_id: user.id,
         group_id: groupId,
         type: "game",
-        content: `Hoàn thành màn ${currentLevel} Memory Match và nhận được ${points} điểm!`,
+        content: `Hoàn thành màn ${currentLevel} Memory Match và nhận được ${points.toLocaleString()} CAMLY!`,
         related_id: groupId,
       });
 
