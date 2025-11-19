@@ -51,7 +51,7 @@ const Navbar = ({ user }: NavbarProps) => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Tìm kiếm trên F.U.Profile"
+              placeholder="Tìm kiếm trên Happy Camly"
               className="w-full pl-10 bg-secondary/50 border-0"
             />
           </div>

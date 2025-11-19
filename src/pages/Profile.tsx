@@ -468,7 +468,7 @@ const Profile = () => {
                     <Coins className="h-4 w-4" />
                     <span className="text-2xl font-bold">{stats.totalReward}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">F.U Token</p>
+                  <p className="text-xs text-muted-foreground">Happy Camly</p>
                 </div>
                 <div>
                   <div className="flex items-center justify-center gap-1 text-accent mb-1">

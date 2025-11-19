@@ -178,7 +178,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
 
         toast({
           title: "Nhận thưởng thành công! 🎉",
-          description: `Bạn đã nhận ${totalPoints} F.U Token`,
+          description: `Bạn đã nhận ${totalPoints} Happy Camly`,
         });
         
         // Show animation
@@ -229,13 +229,13 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
       if (wasAdded) {
         toast({
           title: "Thành công! 🎉",
-          description: "F.U Token đã được thêm vào MetaMask",
+          description: "Happy Camly đã được thêm vào MetaMask",
         });
       }
     } catch (error: any) {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể thêm F.U Token",
+        description: error.message || "Không thể thêm Happy Camly",
         variant: "destructive",
       });
     }
@@ -255,7 +255,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
     if (!amount || amount <= 0) {
       toast({
         title: "Số lượng không hợp lệ",
-        description: "Vui lòng nhập số lượng F.U Token muốn rút",
+        description: "Vui lòng nhập số lượng Happy Camly muốn rút",
         variant: "destructive",
       });
       return;
@@ -264,7 +264,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
     if (amount > claimedPoints) {
       toast({
         title: "Số dư không đủ",
-        description: `Bạn chỉ có ${claimedPoints} F.U Token`,
+        description: `Bạn chỉ có ${claimedPoints} Happy Camly`,
         variant: "destructive",
       });
       return;
@@ -285,7 +285,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
 
       if (data.success) {
         toast({
-          title: "Rút F.U Token thành công! 🎉",
+          title: "Rút Happy Camly thành công! 🎉",
           description: data.message,
         });
         
@@ -383,7 +383,7 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
             className="w-full bg-gradient-to-r from-primary to-accent"
           >
             <Gift className="mr-2 h-4 w-4" />
-            Nhận {unclaimedPoints} F.U Token
+            Nhận {unclaimedPoints} Happy Camly
           </Button>
         )}
 
@@ -414,13 +414,13 @@ const GroupRewards = ({ userId, groupId }: GroupRewardsProps) => {
                 className="w-full"
               >
                 <Download className="mr-2 h-4 w-4" />
-                Import F.U Token vào MetaMask
+                Import Happy Camly vào MetaMask
               </Button>
 
               <div className="flex gap-2">
                 <Input
                   type="number"
-                  placeholder="Số lượng F.U"
+                  placeholder="Số lượng Camly"
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   min="0"

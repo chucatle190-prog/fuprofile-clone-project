@@ -121,7 +121,7 @@ const Auth = () => {
 
         toast({
           title: "Đăng nhập thành công!",
-          description: "Chào mừng trở lại F.U.Profile",
+          description: "Chào mừng trở lại Happy Camly",
         });
       } else {
         const { error } = await supabase.auth.signUp({
@@ -140,7 +140,7 @@ const Auth = () => {
 
         toast({
           title: "Đăng ký thành công!",
-          description: "Chào mừng đến với F.U.Profile",
+          description: "Chào mừng đến với Happy Camly",
         });
       }
     } catch (error: any) {
@@ -170,7 +170,7 @@ const Auth = () => {
             />
           </div>
           <CardTitle className="text-2xl font-bold">
-            F.U.Profile
+            Happy Camly
           </CardTitle>
           <CardDescription>
             {isForgotPassword 

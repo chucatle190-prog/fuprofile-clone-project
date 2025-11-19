@@ -42,8 +42,8 @@ const BSC_TESTNET = {
   blockExplorerUrls: ["https://testnet.bscscan.com/"],
 };
 
-const FU_TOKEN_ADDRESS = "0x8bD5796A709663BDC2279b87fFdA3214f0ea078B";
-const TREASURY_WALLET = "0x6351265ff7f9f036eb0e29662ae0ac6982d8eba5";
+const CAMLY_TOKEN_ADDRESS = "0x0910320181889feFDE0BB1Ca63962b0A8882e413";
+const TREASURY_WALLET = "0xb86d3e56abbaf330be6647329fca76521d22bf80";
 
 const Wallet = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -221,7 +221,7 @@ const Wallet = () => {
         body: {
           amount: 10,
           rewardType: 'daily_claim',
-          description: 'Nhận thưởng F.U Token hàng ngày'
+          description: 'Nhận thưởng Happy Camly hàng ngày'
         }
       });
 
@@ -268,7 +268,7 @@ const Wallet = () => {
     if (withdrawAmount <= 0) {
       toast({
         title: "Thông báo",
-        description: "Không có F.U Token để rút",
+        description: "Không có Happy Camly để rút",
         variant: "destructive",
       });
       return;
@@ -296,10 +296,10 @@ const Wallet = () => {
 
       if (data.success) {
         toast({
-          title: "Rút F.U Token thành công!",
+          title: "Rút Happy Camly thành công!",
           description: (
             <div className="space-y-1">
-              <p>Đã rút {data.amount} F.U Token</p>
+              <p>Đã rút {data.amount} Happy Camly</p>
               <a 
                 href={data.explorerUrl} 
                 target="_blank" 
@@ -324,8 +324,8 @@ const Wallet = () => {
       }
     } catch (error: any) {
       toast({
-        title: "Lỗi rút F.U Token",
-        description: error.message || "Không thể rút F.U Token. Vui lòng thử lại.",
+        title: "Lỗi rút Happy Camly",
+        description: error.message || "Không thể rút Happy Camly. Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -395,7 +395,7 @@ const Wallet = () => {
                     </div>
                     <div className="bg-accent/10 rounded-lg p-4">
                       <p className="text-sm text-muted-foreground">Total Reward</p>
-                      <p className="text-2xl font-bold text-accent">{wallet.total_reward_camly} F.U</p>
+                      <p className="text-2xl font-bold text-accent">{wallet.total_reward_camly} Camly</p>
                     </div>
                   </div>
 
@@ -409,7 +409,7 @@ const Wallet = () => {
                       <span className="font-semibold">{wallet.usdt_balance}</span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-secondary/30 rounded-lg">
-                      <span className="font-medium">F.U Token</span>
+                      <span className="font-medium">Happy Camly</span>
                       <span className="font-semibold">{wallet.camly_balance}</span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-secondary/30 rounded-lg">
@@ -442,7 +442,7 @@ const Wallet = () => {
                   {wallet.camly_balance > 0 && (
                     <div className="p-4 bg-accent/10 border border-accent/20 rounded-lg">
                       <p className="text-sm text-muted-foreground mb-1">Số dư có thể rút</p>
-                      <p className="text-2xl font-bold text-accent">{wallet.camly_balance} F.U Token</p>
+                      <p className="text-2xl font-bold text-accent">{wallet.camly_balance} Camly</p>
                       <p className="text-xs text-muted-foreground mt-2">
                         Token sẽ được chuyển từ treasury vào ví MetaMask của bạn
                       </p>
@@ -458,8 +458,8 @@ const Wallet = () => {
                   </Button>
 
                   <div className="text-xs text-muted-foreground bg-secondary/30 p-3 rounded">
-                    <p className="font-medium mb-1">F.U Token Address (BSC Testnet):</p>
-                    <code className="break-all">{FU_TOKEN_ADDRESS}</code>
+                    <p className="font-medium mb-1">Happy Camly Address (BNB Chain):</p>
+                    <code className="break-all">{CAMLY_TOKEN_ADDRESS}</code>
                   </div>
                 </>
               )}

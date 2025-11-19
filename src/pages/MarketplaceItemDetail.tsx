@@ -172,7 +172,7 @@ const MarketplaceItemDetail = () => {
   };
 
   const formatPrice = (price: number) => {
-    return `${price.toLocaleString()} F.U Token`;
+    return `${price.toLocaleString()} Happy Camly`;
   };
 
   if (loading) {

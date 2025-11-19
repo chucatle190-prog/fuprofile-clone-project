@@ -25,7 +25,7 @@ export default function TutorialOverlay({ isOpen, onComplete }: TutorialOverlayP
     },
     {
       title: "🪄 Magic Shop",
-      description: "Mở Shop để mua các công cụ đặc biệt bằng F.U Token. Kết nối ví MetaMask và chuyển sang BSC Testnet để thanh toán!",
+      description: "Mở Shop để mua các công cụ đặc biệt bằng Happy Camly. Kết nối ví MetaMask và chuyển sang BNB Chain để thanh toán!",
       icon: <ShoppingBag className="w-16 h-16 text-purple-500 mx-auto" />,
     },
     {

@@ -751,7 +751,7 @@ export default function CandyCrushGame() {
                     <Wallet className="w-4 h-4" />
                     <span className="text-sm">{account.slice(0, 6)}...{account.slice(-4)}</span>
                   </div>
-                  <span className="font-bold">{parseFloat(fuBalance).toFixed(2)} F.U</span>
+                  <span className="font-bold">{parseFloat(fuBalance).toFixed(2)} Camly</span>
                 </div>
               </div>
             )}
@@ -856,7 +856,7 @@ export default function CandyCrushGame() {
           {account && (
             <div className="mt-3 flex items-center justify-between text-sm">
               <span>{account.slice(0, 8)}...{account.slice(-6)}</span>
-              <span className="font-bold">{parseFloat(fuBalance).toFixed(2)} F.U</span>
+              <span className="font-bold">{parseFloat(fuBalance).toFixed(2)} Camly</span>
             </div>
           )}
         </Card>

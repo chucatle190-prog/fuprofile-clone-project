@@ -6,8 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// F.U Token contract address on BSC Testnet
-const FU_TOKEN_ADDRESS = '0x8bD5796A709663BDC2279b87fFdA3214f0ea078B'
+// Happy Camly Coin contract address on BNB Chain
+const CAMLY_TOKEN_ADDRESS = '0x0910320181889feFDE0BB1Ca63962b0A8882e413'
 const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/'
 
 // ERC20 ABI for transfer function
@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
       throw new Error('Số lượng rút không hợp lệ');
     }
 
-    console.log(`Processing withdraw for user ${user.id}: ${withdrawAmount} F.U Token`);
+    console.log(`Processing withdraw for user ${user.id}: ${withdrawAmount} Happy Camly`);
 
     // Get user wallet
     const { data: wallet, error: walletError } = await supabase
@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
     // Check if user has enough balance
     const currentBalance = Number(wallet.camly_balance || 0);
     if (currentBalance < withdrawAmount) {
-      throw new Error(`Số dư không đủ. Số dư hiện tại: ${currentBalance} F.U`);
+      throw new Error(`Số dư không đủ. Số dư hiện tại: ${currentBalance} Camly`);
     }
 
     // Setup Web3 provider and wallet
@@ -90,18 +90,18 @@ Deno.serve(async (req) => {
     
     console.log(`Treasury wallet address: ${treasuryWallet.address}`);
 
-    // Connect to F.U Token contract
-    const tokenContract = new ethers.Contract(FU_TOKEN_ADDRESS, ERC20_ABI, treasuryWallet);
+    // Connect to Happy Camly Token contract
+    const tokenContract = new ethers.Contract(CAMLY_TOKEN_ADDRESS, ERC20_ABI, treasuryWallet);
 
     // Get token decimals
     const decimals = await tokenContract.decimals();
     const amountInWei = ethers.parseUnits(withdrawAmount.toString(), decimals);
 
-    console.log(`Transferring ${withdrawAmount} F.U (${amountInWei} wei) to ${wallet.wallet_address}`);
+    console.log(`Transferring ${withdrawAmount} Camly (${amountInWei} wei) to ${wallet.wallet_address}`);
 
     // Check treasury balance
     const treasuryBalance = await tokenContract.balanceOf(treasuryWallet.address);
-    console.log(`Treasury balance: ${ethers.formatUnits(treasuryBalance, decimals)} F.U`);
+    console.log(`Treasury balance: ${ethers.formatUnits(treasuryBalance, decimals)} Camly`);
 
     if (treasuryBalance < amountInWei) {
       throw new Error('Ví treasury không đủ token. Vui lòng liên hệ admin.');
