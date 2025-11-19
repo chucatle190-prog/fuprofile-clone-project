@@ -87,6 +87,15 @@ Deno.serve(async (req) => {
     // Connect to BNB Chain and send on-chain transfer from treasury to user wallet
     const provider = new ethers.JsonRpcProvider(BNB_CHAIN_RPC);
     const treasuryWallet = new ethers.Wallet(treasuryPrivateKey, provider);
+    
+    // Check treasury has enough BNB for gas
+    const treasuryBnbBalance = await provider.getBalance(treasuryWallet.address);
+    console.log('Treasury BNB balance:', ethers.formatEther(treasuryBnbBalance), 'BNB');
+    
+    if (treasuryBnbBalance < ethers.parseEther('0.001')) {
+      throw new Error('Treasury không đủ BNB để trả phí giao dịch. Vui lòng nạp BNB vào treasury wallet.');
+    }
+    
     const camlyContract = new ethers.Contract(CAMLY_TOKEN_ADDRESS, ERC20_ABI, treasuryWallet);
 
     // Ensure treasury has enough CAMLY
@@ -143,6 +152,7 @@ Deno.serve(async (req) => {
         amount: withdrawAmount,
         newBalance,
         transactionHash: tx.hash,
+        explorerUrl: `https://bscscan.com/tx/${tx.hash}`,
         message: `Đã rút ${withdrawAmount} Happy Camly thành công! Token đã được chuyển on-chain về ví của bạn.`,
       }),
       {
