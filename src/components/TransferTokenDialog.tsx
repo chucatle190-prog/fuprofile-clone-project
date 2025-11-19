@@ -59,10 +59,18 @@ export default function TransferTokenDialog({
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
-        throw new Error('Phiên đăng nhập đã hết hạn');
+        toast({
+          title: "Lỗi xác thực",
+          description: "Vui lòng đăng nhập lại",
+          variant: "destructive",
+        });
+        return;
       }
 
       const { data, error } = await supabase.functions.invoke('transfer-tokens', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: {
           receiver_id: receiverId,
           amount: transferAmount,
