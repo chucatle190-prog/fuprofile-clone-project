@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useTopRankings } from "@/hooks/useTopRankings";
 import happyCamlyCoin from "@/assets/happy-camly-coin.jpg";
 import RankUpAnimation from "@/components/RankUpAnimation";
+import TopOneBadge from "@/components/TopOneBadge";
+import { SeasonChampionBadge } from "@/components/SeasonChampionBadge";
 
 interface LeaderboardEntry {
   user_id: string;
@@ -289,10 +291,12 @@ const Leaderboard = () => {
             </Avatar>
 
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold text-foreground truncate">
                   {entry.profiles.full_name || entry.profiles.username}
                 </p>
+                {index === 0 && <TopOneBadge userId={entry.user_id} size="sm" />}
+                <SeasonChampionBadge userId={entry.user_id} size="sm" />
                 {getRankBadge(index + 1)}
                 {entry.user_id === user?.id && (
                   <Badge variant="outline" className="ml-auto">Bạn</Badge>
