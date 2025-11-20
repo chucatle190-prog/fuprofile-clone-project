@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, Medal, Award, TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { Trophy, Medal, Award, TrendingUp, TrendingDown, Wallet, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTopRankings } from "@/hooks/useTopRankings";
 import happyCamlyCoin from "@/assets/happy-camly-coin.jpg";
@@ -39,7 +39,7 @@ const Leaderboard = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { setTopHolders, setTopReceivers, setTopSenders, latestRankChange, clearRankChange } = useTopRankings();
+  const { setTopHolders, setTopReceivers, setTopSenders, latestRankChange, clearRankChange, clearCache, lastUpdated } = useTopRankings();
   const { newChampion, clearChampion } = useSeasonChampionNotification(user?.id);
 
   useEffect(() => {
@@ -368,6 +368,34 @@ const Leaderboard = () => {
                 <p className="text-muted-foreground mt-2">
                   Top người dùng xuất sắc nhất trong cộng đồng Happy Camly
                 </p>
+                
+                {/* Refresh button and timestamp */}
+                <div className="flex items-center justify-center gap-4 mt-4">
+                  <button
+                    onClick={() => {
+                      clearCache();
+                      fetchLeaderboards();
+                      toast({
+                        title: "Đã làm mới",
+                        description: "Bảng xếp hạng đã được cập nhật",
+                      });
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors text-primary font-medium"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Làm mới bảng xếp hạng
+                  </button>
+                  
+                  {lastUpdated > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Cập nhật lúc: {new Date(lastUpdated).toLocaleTimeString('vi-VN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                      })}
+                    </p>
+                  )}
+                </div>
               </CardHeader>
             </Card>
 
