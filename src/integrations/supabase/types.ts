@@ -955,6 +955,33 @@ export type Database = {
         }
         Relationships: []
       }
+      season_champions: {
+        Row: {
+          awarded_at: string
+          category: string
+          id: string
+          rank: number
+          season_number: number
+          user_id: string
+        }
+        Insert: {
+          awarded_at?: string
+          category: string
+          id?: string
+          rank: number
+          season_number: number
+          user_id: string
+        }
+        Update: {
+          awarded_at?: string
+          category?: string
+          id?: string
+          rank?: number
+          season_number?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       shares: {
         Row: {
           content: string | null
@@ -1225,6 +1252,7 @@ export type Database = {
         Returns: string
       }
       ensure_user_wallet: { Args: { p_user_id: string }; Returns: undefined }
+      get_current_season: { Args: never; Returns: number }
       has_group_role: {
         Args: { _group_id: string; _role: string; _user_id: string }
         Returns: boolean
