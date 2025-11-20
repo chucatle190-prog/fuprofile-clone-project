@@ -315,9 +315,17 @@ const Leaderboard = () => {
                 <p className="font-bold text-foreground truncate">
                   {entry.profiles.full_name || entry.profiles.username}
                 </p>
-                {index === 0 && <TopOneBadge userId={entry.user_id} size="sm" />}
-                <SeasonChampionBadge userId={entry.user_id} size="sm" />
-                {index > 0 && getRankBadge(index + 1)}
+                {index === 0 ? (
+                  <>
+                    <TopOneBadge userId={entry.user_id} size="sm" />
+                    <SeasonChampionBadge userId={entry.user_id} size="sm" showWithTopOne={true} />
+                  </>
+                ) : (
+                  <>
+                    <SeasonChampionBadge userId={entry.user_id} size="sm" />
+                    {getRankBadge(index + 1)}
+                  </>
+                )}
                 {entry.user_id === user?.id && (
                   <Badge variant="outline" className="ml-auto">Bạn</Badge>
                 )}
