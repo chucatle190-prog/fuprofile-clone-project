@@ -7,7 +7,8 @@ import LeftSidebar from "@/components/LeftSidebar";
 import RightSidebar from "@/components/RightSidebar";
 import MobileNav from "@/components/MobileNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Music as MusicIcon, Play, Pause } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Music as MusicIcon, Play, ExternalLink, RefreshCw } from "lucide-react";
 
 const Music = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -62,34 +63,46 @@ const Music = () => {
             <Card>
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-bold flex items-center gap-2">
-                      <Play className="h-5 w-5 text-primary" />
-                      Playlist Chính Thức
-                    </h3>
-                    <a 
-                      href={playlistUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-primary hover:underline flex items-center gap-2"
-                    >
-                      Mở trên Suno →
-                    </a>
-                  </div>
+                  <div className="text-center space-y-4">
+                    <div className="relative w-full max-w-md mx-auto aspect-square rounded-lg overflow-hidden shadow-2xl border-2 border-primary/20">
+                      <img 
+                        src="https://cdn2.suno.ai/674cb425.jpeg?width=600" 
+                        alt="8 câu Thần Chú Playlist"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                        <h3 className="text-2xl font-bold mb-2">8 câu Thần Chú</h3>
+                        <p className="text-sm opacity-90">28 bài hát</p>
+                      </div>
+                    </div>
 
-                  {/* Suno Playlist Embed */}
-                  <div className="w-full rounded-lg overflow-hidden shadow-xl border border-border bg-card">
-                    <iframe
-                      src={`${playlistUrl}?embed=true`}
-                      width="100%"
-                      height="600"
-                      className="w-full"
-                      style={{ border: 'none' }}
-                      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; fullscreen"
-                      sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                      loading="lazy"
-                      title="Suno Playlist"
-                    />
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                      <Button
+                        onClick={() => window.open(playlistUrl, '_blank')}
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 px-8 py-6 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <Play className="h-6 w-6" />
+                        Nghe trên Suno
+                        <ExternalLink className="h-5 w-5" />
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        onClick={() => window.location.reload()}
+                        className="gap-2"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Làm mới
+                      </Button>
+                    </div>
+
+                    <div className="mt-6 p-4 rounded-lg bg-muted/30 border border-border/50">
+                      <p className="text-sm text-muted-foreground">
+                        💡 <strong>Lưu ý:</strong> Playlist này được lưu trữ trên Suno và tự động cập nhật khi có bài hát mới. 
+                        Nhấn "Nghe trên Suno" để truy cập playlist đầy đủ với tất cả tính năng phát nhạc.
+                      </p>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
@@ -120,7 +133,7 @@ const Music = () => {
                     <div className="p-4 rounded-lg bg-accent/10 border border-accent/20">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-accent/20 rounded-full">
-                          <Pause className="h-5 w-5 text-accent-foreground" />
+                          <MusicIcon className="h-5 w-5 text-accent-foreground" />
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Chất lượng</p>
