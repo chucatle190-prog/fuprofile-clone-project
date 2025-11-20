@@ -70,18 +70,41 @@ export const useMusicPlayer = create<MusicPlayerState>((set, get) => ({
   setAudioElement: (element) => set({ audioElement: element }),
   
   playNext: () => {
-    const state = get();
-    // This will be implemented with the songs array
-    console.log('Play next');
+    const { currentSongIndex, isShuffle, repeatMode } = get();
+    const { songs } = require('@/lib/musicLibrary');
+    
+    let nextIndex = currentSongIndex + 1;
+    
+    if (isShuffle) {
+      nextIndex = Math.floor(Math.random() * songs.length);
+    } else if (nextIndex >= songs.length) {
+      if (repeatMode === 'all') {
+        nextIndex = 0;
+      } else {
+        return;
+      }
+    }
+    
+    get().setCurrentSong(songs[nextIndex], nextIndex);
+    get().setIsPlaying(true);
   },
   
   playPrevious: () => {
-    const state = get();
-    // This will be implemented with the songs array
-    console.log('Play previous');
+    const { currentSongIndex } = get();
+    const { songs } = require('@/lib/musicLibrary');
+    
+    if (currentSongIndex > 0) {
+      const prevIndex = currentSongIndex - 1;
+      get().setCurrentSong(songs[prevIndex], prevIndex);
+      get().setIsPlaying(true);
+    }
   },
   
   playSongAtIndex: (index) => {
-    console.log('Play song at index:', index);
+    const { songs } = require('@/lib/musicLibrary');
+    if (index >= 0 && index < songs.length) {
+      get().setCurrentSong(songs[index], index);
+      get().setIsPlaying(true);
+    }
   }
 }));

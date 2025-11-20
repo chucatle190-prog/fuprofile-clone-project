@@ -41,6 +41,8 @@ const Music = () => {
     cycleRepeatMode,
     setCurrentSong,
     setAudioElement,
+    playNext,
+    playPrevious,
   } = useMusicPlayer();
 
   useEffect(() => {
@@ -105,7 +107,7 @@ const Music = () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [setCurrentTime, setDuration, repeatMode, currentSongIndex, setIsPlaying]);
+  }, [setCurrentTime, setDuration, repeatMode, currentSongIndex, setIsPlaying, playNext]);
 
   // Initialize first song if none is playing
   useEffect(() => {
@@ -139,22 +141,6 @@ const Music = () => {
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
-  };
-
-  const playNext = () => {
-    if (currentSongIndex < songs.length - 1) {
-      const nextIndex = currentSongIndex + 1;
-      setCurrentSong(songs[nextIndex], nextIndex);
-      setIsPlaying(true);
-    }
-  };
-
-  const playPrevious = () => {
-    if (currentSongIndex > 0) {
-      const prevIndex = currentSongIndex - 1;
-      setCurrentSong(songs[prevIndex], prevIndex);
-      setIsPlaying(true);
-    }
   };
 
   const handleSeek = (value: number[]) => {
