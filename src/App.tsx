@@ -23,6 +23,7 @@ import MarketplaceItemDetail from "./pages/MarketplaceItemDetail";
 import TransactionHistory from "./pages/TransactionHistory";
 import Leaderboard from "./pages/Leaderboard";
 import SeasonHistory from "./pages/SeasonHistory";
+import Music from "./pages/Music";
 import NotFound from "./pages/NotFound";
 import EightBallPool from "./components/games/EightBallPool";
 
@@ -65,6 +66,7 @@ const AppContent = () => {
       <Route path="/transactions" element={<TransactionHistory />} />
       <Route path="/leaderboard" element={<Leaderboard />} />
       <Route path="/season-history" element={<SeasonHistory />} />
+      <Route path="/music" element={<Music />} />
       <Route path="/settings" element={<Settings />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />

@@ -1,4 +1,4 @@
-import { Home, Users, ShoppingBag, MessageCircle, Bell, User as UserIcon } from "lucide-react";
+import { Home, Users, ShoppingBag, MessageCircle, Music, User as UserIcon } from "lucide-react";
 import { NavLink } from "./NavLink";
 import { Badge } from "./ui/badge";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
@@ -50,17 +50,12 @@ const MobileNav = ({ user }: MobileNavProps) => {
         </NavLink>
         
         <NavLink
-          to="/notifications"
-          className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-primary transition-colors relative"
+          to="/music"
+          className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground hover:text-primary transition-colors"
           activeClassName="text-primary"
         >
-          <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <Badge className="absolute top-1 right-[calc(50%-12px)] h-4 w-4 flex items-center justify-center p-0 text-[10px]">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </Badge>
-          )}
-          <span className="text-[10px] mt-0.5">Thông báo</span>
+          <Music className="h-5 w-5" />
+          <span className="text-[10px] mt-0.5">Nhạc</span>
         </NavLink>
         
         <NavLink
