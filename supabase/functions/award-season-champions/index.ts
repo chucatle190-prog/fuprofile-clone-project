@@ -1,9 +1,21 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.80.0'
+import { ethers } from 'https://esm.sh/ethers@6.9.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+// USDT Contract on BSC Mainnet
+const USDT_CONTRACT = '0x55d398326f99059fF775485246999027B3197955'
+const BSC_RPC = 'https://bsc-dataseed.binance.org/'
+
+// ERC20 ABI for transfer function
+const ERC20_ABI = [
+  'function transfer(address to, uint256 amount) returns (bool)',
+  'function balanceOf(address account) view returns (uint256)',
+  'function decimals() view returns (uint8)'
+]
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -168,36 +180,86 @@ Deno.serve(async (req) => {
 
     console.log('Successfully awarded season champions')
 
-    // Award 10 USDT to rank 1 champions (Quán quân)
+    // Award 10 USDT on-chain to rank 1 champions (Quán quân)
     const rank1Champions = championsToAward.filter(c => c.rank === 1)
     
     for (const champion of rank1Champions) {
-      // Fetch current wallet
-      const { data: wallet, error: fetchError } = await supabase
-        .from('user_wallets')
-        .select('usdt_balance')
-        .eq('user_id', champion.user_id)
-        .single()
-      
-      if (fetchError) {
-        console.error('Error fetching wallet for champion:', champion.user_id, fetchError)
-        continue
-      }
-      
-      // Update with 10 USDT reward
-      const newBalance = (Number(wallet?.usdt_balance) || 0) + 10
-      const { error: rewardError } = await supabase
-        .from('user_wallets')
-        .update({ 
-          usdt_balance: newBalance,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', champion.user_id)
-      
-      if (rewardError) {
-        console.error('Error awarding USDT to champion:', champion.user_id, rewardError)
-      } else {
-        console.log(`Awarded 10 USDT to champion ${champion.user_id} for ${champion.category}`)
+      try {
+        // Get user's wallet address from profiles
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('wallet_address')
+          .eq('id', champion.user_id)
+          .single()
+        
+        if (profileError || !profile?.wallet_address) {
+          console.error('No wallet address for champion:', champion.user_id)
+          continue
+        }
+
+        console.log(`Transferring 10 USDT on-chain to ${profile.wallet_address}`)
+
+        // Initialize provider and wallet
+        const provider = new ethers.JsonRpcProvider(BSC_RPC)
+        const privateKey = Deno.env.get('USDT_TREASURY_PRIVATE_KEY')
+        
+        if (!privateKey) {
+          console.error('Treasury private key not configured')
+          continue
+        }
+
+        const wallet = new ethers.Wallet(privateKey, provider)
+        
+        // Initialize USDT contract
+        const usdtContract = new ethers.Contract(USDT_CONTRACT, ERC20_ABI, wallet)
+        
+        // Get decimals and calculate amount (10 USDT)
+        const decimals = await usdtContract.decimals()
+        const amount = ethers.parseUnits('10', decimals)
+        
+        // Check treasury balance
+        const balance = await usdtContract.balanceOf(wallet.address)
+        console.log(`Treasury USDT balance: ${ethers.formatUnits(balance, decimals)}`)
+        
+        if (balance < amount) {
+          console.error('Insufficient USDT in treasury wallet')
+          continue
+        }
+
+        // Execute transfer
+        const tx = await usdtContract.transfer(profile.wallet_address, amount)
+        console.log(`Transaction sent: ${tx.hash}`)
+        
+        // Wait for confirmation
+        const receipt = await tx.wait()
+        console.log(`Transaction confirmed in block ${receipt.blockNumber}`)
+
+        // Update database only after successful on-chain transfer
+        const { data: walletData, error: fetchError } = await supabase
+          .from('user_wallets')
+          .select('usdt_balance')
+          .eq('user_id', champion.user_id)
+          .single()
+        
+        if (!fetchError && walletData) {
+          const newBalance = (Number(walletData.usdt_balance) || 0) + 10
+          const { error: updateError } = await supabase
+            .from('user_wallets')
+            .update({ 
+              usdt_balance: newBalance,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', champion.user_id)
+          
+          if (updateError) {
+            console.error('Error updating database:', updateError)
+          }
+        }
+
+        console.log(`Successfully awarded 10 USDT to champion ${champion.user_id} (${champion.category}) - TX: ${tx.hash}`)
+        
+      } catch (error) {
+        console.error(`Error awarding USDT to champion ${champion.user_id}:`, error)
       }
     }
 
