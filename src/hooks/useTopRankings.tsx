@@ -46,12 +46,15 @@ export const useTopRankings = create<TopRankingsState>()(
         const state = get();
         const newList = userIds.slice(0, 10);
         
+        // Clear duplicates and ensure unique entries
+        const uniqueNewList = [...new Set(newList)];
+        
         if (currentUserId) {
           const previousRank = state.topHolders.indexOf(currentUserId) !== -1 
             ? state.topHolders.indexOf(currentUserId) + 1 
             : null;
-          const newRank = newList.indexOf(currentUserId) !== -1 
-            ? newList.indexOf(currentUserId) + 1 
+          const newRank = uniqueNewList.indexOf(currentUserId) !== -1 
+            ? uniqueNewList.indexOf(currentUserId) + 1 
             : null;
           
           // Check if rank changed
@@ -83,19 +86,22 @@ export const useTopRankings = create<TopRankingsState>()(
           }));
         }
         
-        set({ topHolders: newList, lastUpdated: Date.now() });
+        set({ topHolders: uniqueNewList, lastUpdated: Date.now() });
       },
       
       setTopReceivers: (userIds, currentUserId) => {
         const state = get();
         const newList = userIds.slice(0, 10);
         
+        // Clear duplicates and ensure unique entries
+        const uniqueNewList = [...new Set(newList)];
+        
         if (currentUserId) {
           const previousRank = state.topReceivers.indexOf(currentUserId) !== -1 
             ? state.topReceivers.indexOf(currentUserId) + 1 
             : null;
-          const newRank = newList.indexOf(currentUserId) !== -1 
-            ? newList.indexOf(currentUserId) + 1 
+          const newRank = uniqueNewList.indexOf(currentUserId) !== -1 
+            ? uniqueNewList.indexOf(currentUserId) + 1 
             : null;
           
           // Check if rank changed
@@ -126,19 +132,22 @@ export const useTopRankings = create<TopRankingsState>()(
           }));
         }
         
-        set({ topReceivers: newList, lastUpdated: Date.now() });
+        set({ topReceivers: uniqueNewList, lastUpdated: Date.now() });
       },
       
       setTopSenders: (userIds, currentUserId) => {
         const state = get();
         const newList = userIds.slice(0, 10);
         
+        // Clear duplicates and ensure unique entries
+        const uniqueNewList = [...new Set(newList)];
+        
         if (currentUserId) {
           const previousRank = state.topSenders.indexOf(currentUserId) !== -1 
             ? state.topSenders.indexOf(currentUserId) + 1 
             : null;
-          const newRank = newList.indexOf(currentUserId) !== -1 
-            ? newList.indexOf(currentUserId) + 1 
+          const newRank = uniqueNewList.indexOf(currentUserId) !== -1 
+            ? uniqueNewList.indexOf(currentUserId) + 1 
             : null;
           
           // Check if rank changed
@@ -169,7 +178,7 @@ export const useTopRankings = create<TopRankingsState>()(
           }));
         }
         
-        set({ topSenders: newList, lastUpdated: Date.now() });
+        set({ topSenders: uniqueNewList, lastUpdated: Date.now() });
       },
       
       getUserRank: (userId, category) => {
