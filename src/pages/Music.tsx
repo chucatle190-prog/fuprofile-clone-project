@@ -80,12 +80,14 @@ const Music = () => {
                   {/* Suno Playlist Embed */}
                   <div className="w-full rounded-lg overflow-hidden shadow-xl border border-border bg-card">
                     <iframe
-                      src={playlistUrl}
+                      src={`${playlistUrl}?embed=true`}
                       width="100%"
                       height="600"
                       className="w-full"
                       style={{ border: 'none' }}
-                      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; fullscreen"
+                      sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                      loading="lazy"
                       title="Suno Playlist"
                     />
                   </div>
