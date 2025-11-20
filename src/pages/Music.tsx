@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -20,7 +20,6 @@ const Music = () => {
   const [user, setUser] = useState<User | null>(null);
   const navigate = useNavigate();
   const playlistUrl = "https://suno.com/playlist/780671e0-02c4-467d-8ddb-b6e9a2ede0f5";
-  const audioRef = useRef<HTMLAudioElement>(null);
   
   const [favoriteSongs, setFavoriteSongs] = useState<string[]>([]);
   
@@ -35,12 +34,10 @@ const Music = () => {
     repeatMode,
     setIsPlaying,
     setCurrentTime,
-    setDuration,
     setVolume,
     toggleShuffle,
     cycleRepeatMode,
     setCurrentSong,
-    setAudioElement,
     playNext,
     playPrevious,
   } = useMusicPlayer();
@@ -67,66 +64,12 @@ const Music = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Initialize audio element
-  useEffect(() => {
-    if (audioRef.current) {
-      setAudioElement(audioRef.current);
-    }
-  }, [setAudioElement]);
-
-  // Handle audio events
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-    };
-
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-    };
-
-    const handleEnded = () => {
-      if (repeatMode === 'one') {
-        audio.currentTime = 0;
-        audio.play();
-      } else if (repeatMode === 'all' || currentSongIndex < songs.length - 1) {
-        playNext();
-      } else {
-        setIsPlaying(false);
-      }
-    };
-
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('ended', handleEnded);
-
-    return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  }, [setCurrentTime, setDuration, repeatMode, currentSongIndex, setIsPlaying, playNext]);
-
   // Initialize first song if none is playing
   useEffect(() => {
     if (!currentSong && songs.length > 0) {
       setCurrentSong(songs[0], 0);
     }
   }, [currentSong, setCurrentSong]);
-
-  // Update audio source when song changes
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (audio && currentSong) {
-      audio.src = currentSong.audioUrl;
-      audio.volume = volume;
-      if (isPlaying) {
-        audio.play().catch(console.error);
-      }
-    }
-  }, [currentSong, volume, isPlaying]);
 
   const loadFavorites = async (userId: string) => {
     const { data } = await supabase
@@ -214,7 +157,6 @@ const Music = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <audio ref={audioRef} />
       <Navbar user={user} />
       
       <div className="container mx-auto px-4 py-8 mt-20">
