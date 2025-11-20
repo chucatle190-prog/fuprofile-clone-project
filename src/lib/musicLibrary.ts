@@ -65,3 +65,39 @@ export const musicLibrary: MusicTrack[] = [
     duration: 30,
   },
 ];
+
+export interface Song {
+  id: string;
+  title: string;
+  artist: string;
+  duration: string;
+  imageUrl: string;
+  audioUrl: string;
+}
+
+export const songs: Song[] = [
+  {
+    id: "97e36264-c778-4cad-b477-b106f36ee899",
+    title: "I am the Pure Loving Light of Father Uni",
+    artist: "HappyCamlyCoin",
+    duration: "4:01",
+    imageUrl: "https://cdn2.suno.ai/image_97e36264-c778-4cad-b477-b106f36ee899.jpeg",
+    audioUrl: "https://audiopipe.suno.ai/?item_id=97e36264-c778-4cad-b477-b106f36ee899"
+  },
+  {
+    id: "ca26ef90-dd93-4e38-b712-021f9163a9cd",
+    title: "I am the Pure Loving Light of Father Uni",
+    artist: "HappyCamlyCoin",
+    duration: "3:34",
+    imageUrl: "https://cdn2.suno.ai/image_ca26ef90-dd93-4e38-b712-021f9163a9cd.jpeg",
+    audioUrl: "https://audiopipe.suno.ai/?item_id=ca26ef90-dd93-4e38-b712-021f9163a9cd"
+  },
+  {
+    id: "dfbd97fa-6b87-47c6-9ed4-ef879bbe43d6",
+    title: "I am the Pure Loving Light of Father Uni",
+    artist: "HappyCamlyCoin",
+    duration: "3:23",
+    imageUrl: "https://cdn2.suno.ai/image_dfbd97fa-6b87-47c6-9ed4-ef879bbe43d6.jpeg",
+    audioUrl: "https://audiopipe.suno.ai/?item_id=dfbd97fa-6b87-47c6-9ed4-ef879bbe43d6"
+  }
+];
