@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Trophy, Award, Medal } from "lucide-react";
-import Confetti from "@/components/games/Confetti";
+import { Confetti } from "@/components/games/Confetti";
 
 interface SeasonChampionAnimationProps {
   rank: number;
