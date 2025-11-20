@@ -47,8 +47,8 @@ export const LyricsViewer = ({ songId, currentTime, isPlaying }: LyricsViewerPro
     fetchLyrics();
   }, [songId]);
 
-  // Add a small buffer (0.3s) to make lyrics appear slightly ahead for better sync
-  const LYRICS_OFFSET = 0.3;
+  // Slight delay to sync lyrics with audio (accounts for intro)
+  const LYRICS_OFFSET = -0.1;
 
   const getCurrentLyricIndex = () => {
     const adjustedTime = currentTime + LYRICS_OFFSET;
