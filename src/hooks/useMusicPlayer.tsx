@@ -44,7 +44,14 @@ export const useMusicPlayer = create<MusicPlayerState>((set, get) => ({
     const audio = get().audioElement;
     if (audio) {
       if (playing) {
-        audio.play().catch(console.error);
+        // Ensure audio is not muted when user hits play
+        audio.muted = false;
+        const playPromise = audio.play();
+        if (playPromise && typeof playPromise.then === "function") {
+          playPromise.catch((err) => {
+            console.error("Audio play error:", err);
+          });
+        }
       } else {
         audio.pause();
       }
