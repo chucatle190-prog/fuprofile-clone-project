@@ -393,6 +393,62 @@ const Music = () => {
               </CardContent>
             </Card>
 
+            {/* Song List */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Danh sách bài hát</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Chạm vào một bài để phát, nhấn trái tim để thêm vào yêu thích.
+                </p>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border">
+                  {songs.map((song, index) => (
+                    <button
+                      key={song.id}
+                      type="button"
+                      onClick={() => playSong(index)}
+                      className={`w-full flex items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-accent ${
+                        currentSong.id === song.id ? "bg-primary/5" : ""
+                      }`}
+                    >
+                      <img
+                        src={song.imageUrl}
+                        alt={song.title}
+                        className="w-14 h-14 rounded object-cover flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold truncate">{song.title}</h4>
+                        <p className="text-sm text-muted-foreground truncate">{song.artist}</p>
+                        <p className="text-xs text-muted-foreground">{song.duration}</p>
+                      </div>
+                      <div className="ml-auto flex items-center gap-3">
+                        {currentSong.id === song.id && (
+                          <span className="text-xs font-medium text-primary">Đang phát</span>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(song.id);
+                          }}
+                        >
+                          <Heart
+                            className={`h-5 w-5 ${
+                              favoriteSongs.includes(song.id)
+                                ? "fill-red-500 text-red-500"
+                                : "text-muted-foreground"
+                            }`}
+                          />
+                        </Button>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Full Playlist Link */}
             <Card>
               <CardContent className="p-6 text-center">
