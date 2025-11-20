@@ -8,7 +8,7 @@ import RightSidebar from "@/components/RightSidebar";
 import MobileNav from "@/components/MobileNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Music as MusicIcon, Play, Pause, SkipBack, SkipForward, Volume2, ExternalLink, Loader2 } from "lucide-react";
+import { Music as MusicIcon, Play, Pause, SkipBack, SkipForward, Volume2, ExternalLink, Loader2, Shuffle, Repeat } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { songs, Song } from "@/lib/musicLibrary";
 
@@ -23,6 +23,8 @@ const Music = () => {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [isRepeat, setIsRepeat] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const currentSong = songs[currentSongIndex];
@@ -54,8 +56,17 @@ const Music = () => {
     const updateTime = () => setCurrentTime(audio.currentTime);
     const updateDuration = () => setDuration(audio.duration);
     const handleEnded = () => {
-      if (currentSongIndex < songs.length - 1) {
+      if (isShuffle) {
+        // Random song, but not the current one
+        let randomIndex;
+        do {
+          randomIndex = Math.floor(Math.random() * songs.length);
+        } while (randomIndex === currentSongIndex && songs.length > 1);
+        setCurrentSongIndex(randomIndex);
+      } else if (currentSongIndex < songs.length - 1) {
         setCurrentSongIndex(prev => prev + 1);
+      } else if (isRepeat) {
+        setCurrentSongIndex(0);
       } else {
         setIsPlaying(false);
       }
@@ -76,7 +87,7 @@ const Music = () => {
       audio.removeEventListener('loadstart', handleLoadStart);
       audio.removeEventListener('canplay', handleCanPlay);
     };
-  }, [currentSongIndex]);
+  }, [currentSongIndex, isShuffle, isRepeat]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -197,41 +208,65 @@ const Music = () => {
                   </div>
 
                   {/* Player Controls */}
-                  <div className="flex items-center justify-center gap-4">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={playPrevious}
-                      disabled={currentSongIndex === 0}
-                      className="h-12 w-12"
-                    >
-                      <SkipBack className="h-5 w-5" />
-                    </Button>
-                    
-                    <Button
-                      size="icon"
-                      onClick={togglePlayPause}
-                      disabled={isLoading}
-                      className="h-16 w-16 rounded-full bg-primary hover:bg-primary/90"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                      ) : isPlaying ? (
-                        <Pause className="h-8 w-8" />
-                      ) : (
-                        <Play className="h-8 w-8 ml-1" />
-                      )}
-                    </Button>
-                    
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={playNext}
-                      disabled={currentSongIndex === songs.length - 1}
-                      className="h-12 w-12"
-                    >
-                      <SkipForward className="h-5 w-5" />
-                    </Button>
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="flex items-center justify-center gap-4">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={playPrevious}
+                        disabled={currentSongIndex === 0}
+                        className="h-12 w-12"
+                      >
+                        <SkipBack className="h-5 w-5" />
+                      </Button>
+                      
+                      <Button
+                        size="icon"
+                        onClick={togglePlayPause}
+                        disabled={isLoading}
+                        className="h-16 w-16 rounded-full bg-primary hover:bg-primary/90"
+                      >
+                        {isLoading ? (
+                          <Loader2 className="h-8 w-8 animate-spin" />
+                        ) : isPlaying ? (
+                          <Pause className="h-8 w-8" />
+                        ) : (
+                          <Play className="h-8 w-8 ml-1" />
+                        )}
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={playNext}
+                        disabled={currentSongIndex === songs.length - 1}
+                        className="h-12 w-12"
+                      >
+                        <SkipForward className="h-5 w-5" />
+                      </Button>
+                    </div>
+
+                    {/* Shuffle and Repeat */}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={isShuffle ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIsShuffle(!isShuffle)}
+                        className="gap-2"
+                      >
+                        <Shuffle className="h-4 w-4" />
+                        Ngẫu nhiên
+                      </Button>
+                      <Button
+                        variant={isRepeat ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIsRepeat(!isRepeat)}
+                        className="gap-2"
+                      >
+                        <Repeat className="h-4 w-4" />
+                        Lặp lại
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Volume Control */}
