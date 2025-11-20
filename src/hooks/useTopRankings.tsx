@@ -26,6 +26,7 @@ interface TopRankingsState {
   getUserRank: (userId: string, category: 'holder' | 'receiver' | 'sender') => number | null;
   getTopCategories: (userId: string) => Array<{ category: string; rank: number }>;
   clearRankChange: () => void;
+  clearCache: () => void;
 }
 
 export const useTopRankings = create<TopRankingsState>()(
@@ -212,6 +213,19 @@ export const useTopRankings = create<TopRankingsState>()(
       },
       
       clearRankChange: () => set({ latestRankChange: null }),
+      
+      clearCache: () => set({
+        topHolders: [],
+        topReceivers: [],
+        topSenders: [],
+        lastUpdated: 0,
+        previousRanks: {
+          holder: null,
+          receiver: null,
+          sender: null,
+        },
+        latestRankChange: null,
+      }),
     }),
     {
       name: 'top-rankings-storage',
