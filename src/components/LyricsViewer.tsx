@@ -48,13 +48,22 @@ export const LyricsViewer = ({ songId, currentTime, isPlaying }: LyricsViewerPro
   }, [songId]);
 
   const getCurrentLyricIndex = () => {
-    if (!isPlaying) return -1;
     return lyrics.findIndex(
       (line) => currentTime >= line.startTime && currentTime < line.endTime
     );
   };
 
   const currentIndex = getCurrentLyricIndex();
+
+  // Auto-scroll to current lyric
+  useEffect(() => {
+    if (currentIndex >= 0 && isPlaying) {
+      const element = document.getElementById(`lyric-line-${currentIndex}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [currentIndex, isPlaying]);
 
   if (loading) {
     return (
@@ -104,6 +113,7 @@ export const LyricsViewer = ({ songId, currentTime, isPlaying }: LyricsViewerPro
             {lyrics.map((line, index) => (
               <p
                 key={index}
+                id={`lyric-line-${index}`}
                 className={`transition-all duration-300 text-center ${
                   index === currentIndex
                     ? "text-primary font-bold text-xl scale-105"
