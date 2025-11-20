@@ -86,10 +86,14 @@ const Music = () => {
 
   useEffect(() => {
     if (audioRef.current && isPlaying) {
-      audioRef.current.play().catch(() => {
-        setIsPlaying(false);
-        setIsLoading(false);
-      });
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.error("Audio play error:", error);
+          setIsPlaying(false);
+          setIsLoading(false);
+        });
+      }
     } else if (audioRef.current) {
       audioRef.current.pause();
     }
