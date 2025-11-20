@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { useGlobalLeaderboardSync } from "@/hooks/useGlobalLeaderboardSync";
+import { MiniPlayer } from "@/components/MiniPlayer";
 import Intro from "./pages/Intro";
 import Auth from "./pages/Auth";
 import Feed from "./pages/Feed";
@@ -48,9 +49,11 @@ const AppContent = () => {
   useGlobalLeaderboardSync(user?.id);
 
   return (
-    <Routes>
-      <Route path="/" element={<Intro />} />
-      <Route path="/auth" element={<Auth />} />
+    <>
+      <MiniPlayer />
+      <Routes>
+        <Route path="/" element={<Intro />} />
+        <Route path="/auth" element={<Auth />} />
       <Route path="/feed" element={<Feed />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/profile/:username" element={<Profile />} />
@@ -68,9 +71,10 @@ const AppContent = () => {
       <Route path="/season-history" element={<SeasonHistory />} />
       <Route path="/music" element={<Music />} />
       <Route path="/settings" element={<Settings />} />
-      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 };
 
