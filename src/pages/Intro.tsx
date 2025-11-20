@@ -11,12 +11,13 @@ const Intro = () => {
   const [showSkip, setShowSkip] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
   const [videoError, setVideoError] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true); // Start muted by default
 
   useEffect(() => {
     // Try to auto-play video with sound first
     if (videoRef.current) {
-      videoRef.current.muted = false; // Try with sound first
+      videoRef.current.muted = false;
+      setIsMuted(false);
       const playPromise = videoRef.current.play();
       
       if (playPromise !== undefined) {
@@ -25,10 +26,10 @@ const Intro = () => {
           // If autoplay with sound fails, fallback to muted
           if (videoRef.current) {
             videoRef.current.muted = true;
+            setIsMuted(true);
             videoRef.current.play().catch(e => {
               console.error("Video play failed completely:", e);
               setVideoError(true);
-              // Skip to auth after 2 seconds if video fails
               setTimeout(() => navigate("/auth"), 2000);
             });
           }
@@ -53,8 +54,9 @@ const Intro = () => {
 
   const toggleMute = () => {
     if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
+      const newMutedState = !videoRef.current.muted;
+      videoRef.current.muted = newMutedState;
+      setIsMuted(newMutedState);
     }
   };
 
