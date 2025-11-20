@@ -168,6 +168,39 @@ Deno.serve(async (req) => {
 
     console.log('Successfully awarded season champions')
 
+    // Award 10 USDT to rank 1 champions (Quán quân)
+    const rank1Champions = championsToAward.filter(c => c.rank === 1)
+    
+    for (const champion of rank1Champions) {
+      // Fetch current wallet
+      const { data: wallet, error: fetchError } = await supabase
+        .from('user_wallets')
+        .select('usdt_balance')
+        .eq('user_id', champion.user_id)
+        .single()
+      
+      if (fetchError) {
+        console.error('Error fetching wallet for champion:', champion.user_id, fetchError)
+        continue
+      }
+      
+      // Update with 10 USDT reward
+      const newBalance = (Number(wallet?.usdt_balance) || 0) + 10
+      const { error: rewardError } = await supabase
+        .from('user_wallets')
+        .update({ 
+          usdt_balance: newBalance,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', champion.user_id)
+      
+      if (rewardError) {
+        console.error('Error awarding USDT to champion:', champion.user_id, rewardError)
+      } else {
+        console.log(`Awarded 10 USDT to champion ${champion.user_id} for ${champion.category}`)
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         message: 'Season champions awarded successfully',
