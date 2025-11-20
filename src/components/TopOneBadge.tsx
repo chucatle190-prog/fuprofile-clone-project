@@ -1,21 +1,56 @@
+import React from "react";
 import { Crown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Badge } from "./ui/badge";
 import { useTopRankings } from "@/hooks/useTopRankings";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TopOneBadgeProps {
   userId: string;
   size?: "sm" | "md" | "lg";
 }
 
+interface Champion {
+  season_number: number;
+  rank: number;
+  category: "holder" | "receiver" | "sender";
+}
+
 export default function TopOneBadge({ userId, size = "md" }: TopOneBadgeProps) {
   const { getTopCategories } = useTopRankings();
   const categories = getTopCategories(userId);
+  const [champions, setChampions] = React.useState<Champion[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  
+  React.useEffect(() => {
+    const fetchChampions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('season_champions')
+          .select('season_number, rank, category')
+          .eq('user_id', userId)
+          .order('season_number', { ascending: false });
+
+        if (error) throw error;
+        setChampions((data || []) as Champion[]);
+      } catch (error) {
+        console.error('Error fetching champions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (userId) {
+      fetchChampions();
+    }
+  }, [userId]);
   
   if (categories.length === 0) return null;
   
   // Get the highest rank (lowest number)
   const topRank = Math.min(...categories.map(c => c.rank));
+  
+  const hasSeasonChampion = !loading && champions.length > 0;
   
   const sizeClasses = {
     sm: "h-4 w-4 text-[10px]",
@@ -178,6 +213,20 @@ export default function TopOneBadge({ userId, size = "md" }: TopOneBadgeProps) {
     }
   };
   
+  const getCategoryTitle = (category: string) => {
+    if (category === 'holder') return "Giữ CAMLY";
+    if (category === 'receiver') return "Nhận CAMLY";
+    if (category === 'sender') return "Chuyển CAMLY";
+    return "";
+  };
+
+  const getRankTitle = (rank: number) => {
+    if (rank === 1) return "Quán quân";
+    if (rank === 2) return "Á vua";
+    if (rank === 3) return "Á quân";
+    return "";
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -188,7 +237,12 @@ export default function TopOneBadge({ userId, size = "md" }: TopOneBadgeProps) {
               className={`relative bg-gradient-to-br ${styles.gradient} text-white border-2 ${styles.border} shadow-xl ${sizeClasses[size]} px-3 py-1.5 font-extrabold hover:scale-105 transition-all duration-300 cursor-pointer flex items-center gap-1.5`}
             >
               <Crown className={`${sizeClasses[size]} fill-white drop-shadow-lg`} />
-              <span className="drop-shadow-md">TOP {topRank}</span>
+              <span className="drop-shadow-md">
+                TOP {topRank}
+                {hasSeasonChampion && champions[0].rank === 1 && (
+                  <> • Mùa {champions[0].season_number}</>
+                )}
+              </span>
             </Badge>
           </div>
         </button>
@@ -197,7 +251,12 @@ export default function TopOneBadge({ userId, size = "md" }: TopOneBadgeProps) {
         <div className="space-y-4">
           <div className="flex items-center justify-center gap-2 pb-3 border-b-2 border-current/30">
             <Crown className={`h-6 w-6 ${styles.iconColor}`} />
-            <span className={`font-extrabold text-base ${styles.textColor} drop-shadow`}>Thành tích Top {topRank}</span>
+            <span className={`font-extrabold text-base ${styles.textColor} drop-shadow`}>
+              Thành tích Top {topRank}
+              {hasSeasonChampion && champions[0].rank === 1 && (
+                <> • {getRankTitle(champions[0].rank)} Mùa {champions[0].season_number}</>
+              )}
+            </span>
           </div>
           <div className="space-y-2.5">
             {categories.map((item, index) => (
@@ -213,6 +272,26 @@ export default function TopOneBadge({ userId, size = "md" }: TopOneBadgeProps) {
               </div>
             ))}
           </div>
+          {hasSeasonChampion && (
+            <div className="space-y-2 pt-2 border-t-2 border-current/30">
+              <p className={`text-xs font-bold ${styles.textColor} text-center`}>
+                🏆 Danh hiệu mùa giải 🏆
+              </p>
+              {champions.slice(0, 3).map((champion, index) => (
+                <div
+                  key={index}
+                  className={`text-xs bg-white dark:bg-gray-800/80 rounded-lg p-2 border ${styles.cardBorder}`}
+                >
+                  <span className="font-semibold text-gray-800 dark:text-gray-100">
+                    {getRankTitle(champion.rank)} • Mùa {champion.season_number}
+                  </span>
+                  <div className={`text-[10px] ${styles.textColor}`}>
+                    {getCategoryTitle(champion.category)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="text-center pt-2 border-t-2 border-current/30">
             <p className={`text-xs font-semibold ${styles.textColor}`}>
               ✨ Top {topRank} bảng xếp hạng ✨

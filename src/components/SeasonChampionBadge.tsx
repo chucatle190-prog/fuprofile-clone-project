@@ -9,6 +9,7 @@ import {
 interface SeasonChampionBadgeProps {
   userId: string;
   size?: "sm" | "md" | "lg";
+  showWithTopOne?: boolean;
 }
 
 interface Champion {
@@ -17,7 +18,7 @@ interface Champion {
   category: "holder" | "receiver" | "sender";
 }
 
-export const SeasonChampionBadge = ({ userId, size = "md" }: SeasonChampionBadgeProps) => {
+export const SeasonChampionBadge = ({ userId, size = "md", showWithTopOne = false }: SeasonChampionBadgeProps) => {
   const [champions, setChampions] = React.useState<Champion[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -45,6 +46,9 @@ export const SeasonChampionBadge = ({ userId, size = "md" }: SeasonChampionBadge
   }, [userId]);
 
   if (loading || champions.length === 0) return null;
+  
+  // If showing with TOP 1 badge, don't display season champion badge separately
+  if (showWithTopOne) return null;
 
   const getRankTitle = (rank: number) => {
     if (rank === 1) return "Quán quân";
