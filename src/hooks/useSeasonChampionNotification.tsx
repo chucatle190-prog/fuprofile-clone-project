@@ -34,7 +34,7 @@ export const useSeasonChampionNotification = (userId: string | undefined) => {
         if (diffMinutes < 5) {
           setNewChampion({
             rank: data.rank,
-            category: data.category,
+            category: data.category as "holder" | "receiver" | "sender",
             season_number: data.season_number
           });
         }
@@ -61,7 +61,7 @@ export const useSeasonChampionNotification = (userId: string | undefined) => {
           const champion = payload.new as any;
           setNewChampion({
             rank: champion.rank,
-            category: champion.category,
+            category: champion.category as "holder" | "receiver" | "sender",
             season_number: champion.season_number
           });
         }

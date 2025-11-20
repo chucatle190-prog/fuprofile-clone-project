@@ -17,6 +17,9 @@ import happyCamlyCoin from "@/assets/happy-camly-coin.jpg";
 import RankUpAnimation from "@/components/RankUpAnimation";
 import TopOneBadge from "@/components/TopOneBadge";
 import { SeasonChampionBadge } from "@/components/SeasonChampionBadge";
+import { useSeasonChampionNotification } from "@/hooks/useSeasonChampionNotification";
+import SeasonChampionAnimation from "@/components/SeasonChampionAnimation";
+import SeasonCountdown from "@/components/SeasonCountdown";
 
 interface LeaderboardEntry {
   user_id: string;
@@ -37,6 +40,7 @@ const Leaderboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { setTopHolders, setTopReceivers, setTopSenders, latestRankChange, clearRankChange } = useTopRankings();
+  const { newChampion, clearChampion } = useSeasonChampionNotification(user?.id);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -328,6 +332,11 @@ const Leaderboard = () => {
           </div>
 
           <main className="flex-1 max-w-4xl mx-auto">
+            {/* Season Countdown */}
+            <div className="mb-6">
+              <SeasonCountdown />
+            </div>
+
             <Card className="mb-6 bg-gradient-to-br from-primary/5 via-background to-secondary/5">
               <CardHeader className="text-center">
                 <div className="flex justify-center mb-4">
@@ -463,6 +472,15 @@ const Leaderboard = () => {
         type={latestRankChange?.type || 'up'}
         onComplete={clearRankChange}
       />
+
+      {newChampion && (
+        <SeasonChampionAnimation
+          rank={newChampion.rank}
+          category={newChampion.category}
+          season={newChampion.season_number}
+          onComplete={clearChampion}
+        />
+      )}
 
       <MobileNav />
     </div>
