@@ -13,22 +13,29 @@ export const MiniPlayer = () => {
     currentTime,
     duration,
     volume,
+    repeatMode,
     setIsPlaying,
     setCurrentTime,
     setDuration,
     setVolume,
     setAudioElement,
     setCurrentSong,
+    playNext,
+    playPrevious,
   } = useMusicPlayer();
 
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // Register audio element with global music player
   useEffect(() => {
     if (audioRef.current) {
       setAudioElement(audioRef.current);
+      // Ensure audio is never muted for music playback
+      audioRef.current.muted = false;
     }
   }, [setAudioElement]);
 
+  // Update audio time and duration
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -36,12 +43,12 @@ export const MiniPlayer = () => {
     const updateTime = () => setCurrentTime(audio.currentTime);
     const updateDuration = () => setDuration(audio.duration);
     const handleEnded = () => {
-      // Handle song end - play next
-      if (currentSongIndex < songs.length - 1) {
-        const nextIndex = currentSongIndex + 1;
-        setCurrentSong(songs[nextIndex], nextIndex);
+      // Use playNext from useMusicPlayer which handles repeat modes
+      if (repeatMode === 'one') {
+        audio.currentTime = 0;
+        audio.play().catch(console.error);
       } else {
-        setIsPlaying(false);
+        playNext();
       }
     };
 
@@ -54,13 +61,26 @@ export const MiniPlayer = () => {
       audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [currentSongIndex, setCurrentTime, setDuration, setIsPlaying, setCurrentSong]);
+  }, [setCurrentTime, setDuration, playNext, repeatMode]);
 
+  // Sync volume changes to audio element
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = volume;
     }
   }, [volume]);
+
+  // Update audio source when song changes
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio && currentSong) {
+      audio.src = currentSong.audioUrl;
+      if (isPlaying) {
+        audio.play().catch(console.error);
+      }
+    }
+  }, [currentSong, isPlaying]);
 
   const handleSeek = (value: number[]) => {
     const audio = useMusicPlayer.getState().audioElement;
@@ -80,21 +100,6 @@ export const MiniPlayer = () => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const playNext = () => {
-    if (currentSongIndex < songs.length - 1) {
-      const nextIndex = currentSongIndex + 1;
-      setCurrentSong(songs[nextIndex], nextIndex);
-      setIsPlaying(true);
-    }
-  };
-
-  const playPrevious = () => {
-    if (currentSongIndex > 0) {
-      const prevIndex = currentSongIndex - 1;
-      setCurrentSong(songs[prevIndex], prevIndex);
-      setIsPlaying(true);
-    }
-  };
 
   const handleClose = () => {
     setIsPlaying(false);
@@ -105,7 +110,7 @@ export const MiniPlayer = () => {
 
   return (
     <div className="fixed top-16 left-0 right-0 bg-card/95 backdrop-blur-sm border-b border-border shadow-lg z-40 animate-in slide-in-from-top">
-      <audio ref={audioRef} src={currentSong.audioUrl} />
+      <audio ref={audioRef} />
       
       <div className="container mx-auto px-4 py-2">
         <div className="flex items-center gap-4">
@@ -129,7 +134,7 @@ export const MiniPlayer = () => {
               size="icon"
               className="h-8 w-8"
               onClick={playPrevious}
-              disabled={currentSongIndex === 0}
+              disabled={currentSongIndex === 0 && repeatMode !== 'all'}
             >
               <SkipBack className="h-4 w-4" />
             </Button>
@@ -151,7 +156,7 @@ export const MiniPlayer = () => {
               size="icon"
               className="h-8 w-8"
               onClick={playNext}
-              disabled={currentSongIndex === songs.length - 1}
+              disabled={currentSongIndex === songs.length - 1 && !repeatMode}
             >
               <SkipForward className="h-4 w-4" />
             </Button>
