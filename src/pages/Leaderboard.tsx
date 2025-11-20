@@ -66,9 +66,18 @@ const Leaderboard = () => {
     if (user) {
       fetchLeaderboards();
       
-      // Setup realtime subscriptions with unique channel names
+      // Setup realtime subscriptions with unique channel names and debouncing
+      let updateTimeout: NodeJS.Timeout;
+      
+      const debouncedUpdate = () => {
+        clearTimeout(updateTimeout);
+        updateTimeout = setTimeout(() => {
+          fetchLeaderboards();
+        }, 500); // Wait 500ms before updating to batch rapid changes
+      };
+      
       const walletsChannel = supabase
-        .channel(`page-leaderboard-wallets-${user.id}`)
+        .channel(`page-leaderboard-wallets-${user.id}-${Date.now()}`)
         .on(
           'postgres_changes',
           {
@@ -78,7 +87,7 @@ const Leaderboard = () => {
           },
           (payload) => {
             console.log('Leaderboard page - wallet change:', payload);
-            fetchLeaderboards();
+            debouncedUpdate();
           }
         )
         .subscribe((status) => {
@@ -86,24 +95,31 @@ const Leaderboard = () => {
         });
       
       const transfersChannel = supabase
-        .channel(`page-leaderboard-transfers-${user.id}`)
+        .channel(`page-leaderboard-transfers-${user.id}-${Date.now()}`)
         .on(
           'postgres_changes',
           {
-            event: 'INSERT',
+            event: '*',
             schema: 'public',
             table: 'token_transfers'
           },
           (payload) => {
             console.log('Leaderboard page - transfer detected:', payload);
-            fetchLeaderboards();
+            debouncedUpdate();
           }
         )
         .subscribe((status) => {
           console.log('Leaderboard page - transfers channel:', status);
         });
       
+      // Periodic refresh every 30 seconds to ensure sync
+      const refreshInterval = setInterval(() => {
+        fetchLeaderboards();
+      }, 30000);
+      
       return () => {
+        clearTimeout(updateTimeout);
+        clearInterval(refreshInterval);
         supabase.removeChannel(walletsChannel);
         supabase.removeChannel(transfersChannel);
       };

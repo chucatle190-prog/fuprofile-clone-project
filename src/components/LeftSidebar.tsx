@@ -1,4 +1,4 @@
-import { Home, Users, UserPlus, Settings, Wallet, ShoppingBag, Trophy } from "lucide-react";
+import { Home, Users, UserPlus, Settings, Wallet, ShoppingBag, Trophy, Calendar } from "lucide-react";
 import { NavLink } from "./NavLink";
 
 const LeftSidebar = () => {
@@ -57,6 +57,15 @@ const LeftSidebar = () => {
         >
           <Trophy className="h-5 w-5" />
           <span className="font-medium">Xếp Hạng</span>
+        </NavLink>
+        
+        <NavLink
+          to="/season-history"
+          className="flex items-center gap-3 px-4 py-3 rounded-lg text-foreground hover:bg-accent/50 transition-colors"
+          activeClassName="bg-accent text-accent-foreground"
+        >
+          <Calendar className="h-5 w-5" />
+          <span className="font-medium">Lịch Sử Mùa Giải</span>
         </NavLink>
         
         <NavLink
