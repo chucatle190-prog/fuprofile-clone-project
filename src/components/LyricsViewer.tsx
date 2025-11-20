@@ -47,20 +47,28 @@ export const LyricsViewer = ({ songId, currentTime, isPlaying }: LyricsViewerPro
     fetchLyrics();
   }, [songId]);
 
+  // Add a small buffer (0.3s) to make lyrics appear slightly ahead for better sync
+  const LYRICS_OFFSET = 0.3;
+
   const getCurrentLyricIndex = () => {
+    const adjustedTime = currentTime + LYRICS_OFFSET;
     return lyrics.findIndex(
-      (line) => currentTime >= line.startTime && currentTime < line.endTime
+      (line) => adjustedTime >= line.startTime && adjustedTime < line.endTime
     );
   };
 
   const currentIndex = getCurrentLyricIndex();
 
-  // Auto-scroll to current lyric
+  // Auto-scroll to current lyric with smooth animation
   useEffect(() => {
     if (currentIndex >= 0 && isPlaying) {
       const element = document.getElementById(`lyric-line-${currentIndex}`);
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center',
+          inline: 'nearest'
+        });
       }
     }
   }, [currentIndex, isPlaying]);
@@ -110,21 +118,32 @@ export const LyricsViewer = ({ songId, currentTime, isPlaying }: LyricsViewerPro
       <CardContent>
         <ScrollArea className="h-[400px] pr-4">
           <div className="space-y-4">
-            {lyrics.map((line, index) => (
-              <p
-                key={index}
-                id={`lyric-line-${index}`}
-                className={`transition-all duration-300 text-center ${
-                  index === currentIndex
-                    ? "text-primary font-bold text-xl scale-105"
-                    : index < currentIndex
-                    ? "text-muted-foreground text-sm opacity-50"
-                    : "text-foreground text-base opacity-70"
-                }`}
-              >
-                {line.text}
-              </p>
-            ))}
+            {lyrics.map((line, index) => {
+              const isActive = index === currentIndex;
+              const isPast = index < currentIndex;
+              const isComing = index === currentIndex + 1;
+              
+              return (
+                <p
+                  key={index}
+                  id={`lyric-line-${index}`}
+                  className={`transition-all duration-500 ease-in-out text-center py-2 ${
+                    isActive
+                      ? "text-primary font-bold text-2xl scale-110 drop-shadow-lg"
+                      : isPast
+                      ? "text-muted-foreground text-sm opacity-40"
+                      : isComing
+                      ? "text-foreground text-lg opacity-85 font-semibold"
+                      : "text-foreground/60 text-base opacity-60"
+                  }`}
+                  style={{
+                    transform: isActive ? 'translateY(0)' : isPast ? 'translateY(-4px)' : 'translateY(0)',
+                  }}
+                >
+                  {line.text}
+                </p>
+              );
+            })}
           </div>
         </ScrollArea>
       </CardContent>
