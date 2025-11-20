@@ -66,6 +66,12 @@ export const musicLibrary: MusicTrack[] = [
   },
 ];
 
+export interface LyricLine {
+  text: string;
+  startTime: number; // in seconds
+  endTime: number;
+}
+
 export interface Song {
   id: string;
   title: string;

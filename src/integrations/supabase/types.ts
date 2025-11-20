@@ -326,6 +326,27 @@ export type Database = {
         }
         Relationships: []
       }
+      favorite_songs: {
+        Row: {
+          created_at: string | null
+          id: string
+          song_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          song_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          song_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       friendships: {
         Row: {
           created_at: string | null
@@ -1013,6 +1034,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      song_lyrics: {
+        Row: {
+          artist: string
+          created_at: string | null
+          id: string
+          lyrics: Json
+          song_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          artist: string
+          created_at?: string | null
+          id?: string
+          lyrics: Json
+          song_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          artist?: string
+          created_at?: string | null
+          id?: string
+          lyrics?: Json
+          song_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       stories: {
         Row: {
